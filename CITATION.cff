@@ -1,0 +1,18 @@
+# YAML 1.2
+---
+cff-version: "1.1.0"
+title: "edg_acoustics"
+authors:
+  -
+    family-names: Wang
+    given-names: Huiqing
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+date-released: 20??-MM-DD
+doi: <insert your DOI here>
+version: "0.1.0"
+repository-code: "https://github.com/EDG-Acoustics/edg-acoustics"
+keywords:
+  - DG
+  - room acoustic modeling
+message: "If you use this software, please cite it using these metadata."
+license: Apache-2.0
