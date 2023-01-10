@@ -63,6 +63,6 @@ jobs:
           pip3 install --ignore-installed prospector[with_pyroma]
       - name: Check style against standards using prospector
         run: |
-          python3 -c "from pyroma import projectdata, ratings"
+          python3 -c "import prospector.tools.pyroma""
       - name: Check import order
         run: isort --check-only edg_acoustics --diff
