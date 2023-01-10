@@ -33,6 +33,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip setuptools
           python3 -m pip install .[dev,publishing]
+          python3 -m pip install prospector[with_pyroma]
       - name: Run unit tests
         run: pytest -v
       - name: Verify that we can build the package
