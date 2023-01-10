@@ -60,7 +60,7 @@ jobs:
           python3 -m pip install .[dev,publishing]
       - name: Install prospector with pyroma
         run: |
-          python3 -m pip install prospector[with_pyroma]
+          pip3 install prospector[with_pyroma]
       - name: Check style against standards using prospector
         run: python3 -m prospector
       - name: Check import order
