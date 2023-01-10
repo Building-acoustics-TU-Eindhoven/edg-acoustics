@@ -61,6 +61,7 @@ jobs:
       - name: Install prospector with pyroma
         run: |
           pip3 install prospector[with_pyroma]
+          pip3 list
       - name: Check style against standards using prospector
         run: python3 -m prospector
       - name: Check import order
