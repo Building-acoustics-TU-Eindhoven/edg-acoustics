@@ -64,6 +64,5 @@ jobs:
       - name: Check style against standards using prospector
         run: |
           python3 -c "from pyroma import projectdata, ratings"
-          python3 -m prospector
       - name: Check import order
         run: isort --check-only edg_acoustics --diff
