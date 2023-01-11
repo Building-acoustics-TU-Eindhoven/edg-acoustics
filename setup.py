@@ -4,4 +4,4 @@ from setuptools import setup
 
 
 # see setup.cfg
-setup()
+setup(python_requires='>3.7')
