@@ -32,113 +32,100 @@ class Mesh:
     """Mesh data structure generated from common mesh file formats.
 
     Data structure containing mesh definition. Mesh data is obtained from
-    raw data or from data stored in common mesh file formats by different
-    mesh generators (e.g.,
-    `DOLFIN XML <https://manpages.ubuntu.com/manpages/jammy/en/man1/dolfin-convert.1.html>`_ (``.xml``),
-    `Netgen <https://github.com/ngsolve/netgen>`_ (``.vol``, ``.vol.gz``),
+    data stored in common mesh file format by
     `Gmsh <https://gmsh.info/doc/texinfo/gmsh.html#File-formats>`_ (format versions 2.2, 4.0, and 4.1 ``.msh``).
+    Since mesh reading relies on meshio, other mesh generators can be made available in the future (e.g.,
+    `DOLFIN XML <https://manpages.ubuntu.com/manpages/jammy/en/man1/dolfin-convert.1.html>`_ (``.xml``),
+    `Netgen <https://github.com/ngsolve/netgen>`_ (``.vol``, ``.vol.gz``).
 
     :class:`.Mesh` defines the domain discretisation and is used to define
-    the finite element spaces that approximate the solution to the acoustic
+    the finite element approximation of the solution to the acoustic
     wave propagation.
 
-    If both raw data and filename are given as input, raw data has precedence.
-
     Args:
-        filename (str | None, optional): the file (pathlike) to read mesh data from. Supported formats as in meshio: Abaqus (.inp),
-            ANSYS msh (.msh), AVS-UCD (.avs), CGNS (.cgns), DOLFIN XML (.xml), Exodus (.e, .exo), FLAC3D (.f3grid),
-            H5M (.h5m), Kratos/MDPA (.mdpa), Medit (.mesh, .meshb), MED/Salome (.med),
+        filename (str): the file (pathlike) to read mesh data from. Supported format
+            Gmsh (format versions 2.2, 4.0, and 4.1, .msh).
+            Since mesh reading relies on meshio, the following formats can be made available in the future:
+            Abaqus (.inp), ANSYS msh (.msh), AVS-UCD (.avs), CGNS (.cgns), DOLFIN XML (.xml), Exodus (.e, .exo),
+            FLAC3D (.f3grid), H5M (.h5m), Kratos/MDPA (.mdpa), Medit (.mesh, .meshb), MED/Salome (.med),
             Nastran (bulk data, .bdf, .fem, .nas), Netgen (.vol, .vol.gz), Neuroglancer precomputed format,
             Gmsh (format versions 2.2, 4.0, and 4.1, .msh), OBJ (.obj), OFF (.off),
             PERMAS (.post, .post.gz, .dato, .dato.gz), PLY (.ply), STL (.stl), Tecplot .dat, TetGen .node/.ele,
             SVG (2D output only) (.svg), SU2 (.su2), UGRID (.ugrid), VTK (.vtk), VTU (.vtu), WKT (TIN) (.wkt),
             XDMF (.xdmf, .xmf).
-            Required for filename input mode.
-
-        vertices (numpy.ndarray | None, optional): An NxM array containing the M coordinates of the N vertices that make up
-            the mesh. M specifies the geometric dimension of the mesh, such that the mesh describes an M-dimensional
-            domain.
-
-        cells (dict[str, numpy.ndarray] | None, optional): the definition of cells in the format
-            {cell_type_1: cells_of_type_1, cell_type_2: cells_of_type_2, ...}. cell_type_i is a string that may
-            take the values 'triangle' or 'tetra'. cell_of_type_i is a numpy.array of size K_i x L_i defining the K_i
-            cells of type cell_type_i in the mesh. Contains the indices of the vertices defining the K_i cells of
-            type cell_type_i. If cell_type_i is 'triangle' then L_i = 3, if cell_type_i is 'tetra' then L_i = 4.
-
-        vertex_data (dict[str, numpy.ndarray] | None, optional): assigns data to the vertices of the mesh. vertex_data
-            has the format {'data_label_1': vertex_data_1, 'data_label_2': vertex_data_2, ...}. data_label_i is a string
-            specifying the label of the i-th vertex data set (a name). vertex_data_i is a numpy.ndarray of dimension N
-            (number of vertices in the mesh).
-
-        cell_data (dict[str, list[numpy.ndarray]] | None, optional): assigns data to the cells of the mesh. cell_data
-            has the format {'data_label_1': [cell_type_1_data_1, cell_type_2_data_1, ...],
-            'data_label_2': [cell_type_1_data_2, cell_type_2_data_2, ...], ...}. data_label_i is a string
-            specifying the label of the i-th cell data set (a name). cell_type_j_data_i is a numpy.ndarray of dimension
-            K_i.
+        BC_labels (dict[str, int]): a dictionary containing the human readable label of each boundary condition and the
+            associated lable number used in the mesh generator. BC_labels['my_label'] returns the label number of the
+            label named 'my_label'. If BC_labels['my_label'] is not present in the mesh, an error is raised. If a label
+            is present in the mesh but not in BC_labels, an error is raised.
 
     Raises:
-        ValueError: If only one of
+        ValueError: If BC_labels['my_label'] is not present in the mesh, an error is raised. If a label
+            is present in the mesh but not in BC_labels, an error is raised.
 
     Attributes:
-        vertices (numpy.ndarray): An NxM array containing the M coordinates of the N vertices that make up
+        N_vertices (int): The number of vertices that make up the mesh.
+        N_tets (int): The number of tetrahedra that make up the mesh (number of elements).
+        N_BC_triangles (dict[str, int]): the number of triangles on the boundary of the domain associated to each
+            boundary label in self.BC_labels. For example self.N_BC_triangles['my_label'] returns the number of boundary
+            triangles associated to lable 'my_label'. 'my_label' must be a key of self.BC_labels.
+        vertices (numpy.ndarray): An (self.N_vertices x M) array containing the M coordinates of the self.N_vertices vertices that make up
             the mesh. M specifies the geometric dimension of the mesh, such that the mesh describes an M-dimensional
             domain.
+        tets (numpy.ndarray): An (self.N_tets x 4) array containing the 4 indices of the vertices of the self.N_tets
+               tetrahedra that make up the mesh.
+        BC_triangles (dict[str, numpy.ndarray]):
 
     Example:
-        An element of this class can be initialized in the following ways
-
-        From raw data
+        An element of this class can be initialized in the following way
 
             >>> import edg_acoustics
-            >>> # Define the vertices of the mesh
-            >>> vertices = [
-                    [0.0, 0.0],
-                    [1.0, 0.0],
-                    [0.0, 1.0],
-                    [1.0, 1.0],
-                    [2.0, 0.0],
-                    [2.0, 1.0],
-                ]
-            >>> # Define two triangles
-            >>> cells = [("triangle", [[0, 1, 2], [1, 3, 2]])]
-            >>> # Generate the mesh
-            >>> mesh = edg_acoustics.Mesh(vertices=vertices, cells=cells)
-
-        From file
-
-            >>> import edg_acoustics
-            >>> mesh = edg_acoustics.Mesh(filename="path_to_my_mesh_file/mesh_filename.msh")
+            >>> BC_labels = {'CNRBC': 12, 'slip': 11, 'impedance': 33}
+            >>> filename = "path_to_my_mesh_file/mesh_filename.msh"
+            >>> mesh = edg_acoustics.Mesh(filename, BC_labels)
     """
 
-    def __init__(
-        self,
-        filename: str | None = None,
-        vertices: numpy.ndarray | None = None,
-        cells: dict[str, numpy.ndarray] | None = None,
-        vertex_data: dict[str, numpy.ndarray] | None = None,
-        cell_data: dict[str, list[numpy.ndarray]] | None = None
-    ):
-        raw_init_required_input_list = [vertices, cells]  # list of required inputs to initialize mesh from raw input
+    def __init__(self, filename: str, BC_labels: dict[str, int]):
+        # Init from file
+        self.__init_from_file(filename, BC_labels)
 
-        if all(raw_init_required_input_list):
-            self.__init_from_raw_data(vertices, cells, vertex_data, cell_data)  # init from raw data
-
-        elif not (filename is None):
-            self.__init_from_file(filename)  # init from file
-
-        else:
-            raise ValueError("[edg_acoustics.mesh,Mesh] You must provide raw input (vertices, cells, [point_data, cell_data]) or mesh "
-                             "filename from where to read data.")
-
-    def __init_from_raw_data(
-        self,
-        vertices: numpy.ndarray | None = None,
-        cells: dict[str, numpy.ndarray] | None = None,
-        point_data: dict[str, numpy.ndarray] | None = None,
-        cell_data: dict[str, list[numpy.ndarray]] | None = None
-    ):
-        mesh = meshio.Mesh(vertices, cells, point_data=point_data, cell_data=cell_data)
-        self.vertices = mesh.points
-
-    def __init_from_file(self, filename: str):
+    def __init_from_file(self, filename: str, BC_labels: dict[str, int]):
         print("Init from filename")
+
+        # Load mesh data from mesh file
+        mesh_data = meshio.read(filename)
+
+        # Extract the relevant data and store it in the object
+
+        # Read the number of points and their coordinates
+        self.N_vertices = mesh_data.points.shape[0]
+        self.vertices = mesh_data.points
+
+        # Check if all labels provided as input exist in the mesh data and vice versa, if not, raise error
+        BC_labels_in_mesh = sorted(numpy.unique(mesh_data.cell_data_dict['gmsh:physical']['triangle']))  # get all labels in the mesh, sort for faster comparison below
+        BC_labels_in_input = sorted(BC_labels.values())  # get all labels specified in input
+        if not BC_labels_in_input == BC_labels_in_mesh:
+            raise ValueError(
+                "[edg_acoustics.Mesh] All BC labels must be present in the mesh and all labels in the mesh must be "
+                "present in BC_labels.")
+
+        # Read the boundary triangles and their definitions separating them into the different boundary condition labels
+        self.N_BC_triangles = dict()
+        self.BC_triangles = dict()
+        for BC_label in BC_labels:
+            triangles_have_label = (mesh_data.cell_data_dict['gmsh:physical']['triangle'] == BC_labels[BC_label])  # array with bools specifying if triangle has BC_label or not
+            self.N_BC_triangles[BC_label] = triangles_have_label.sum()  # number of triangles with label BC_label
+            self.BC_triangles[BC_label] = mesh_data.cells_dict['triangle'][triangles_have_label]  # get the triangles with BC_label
+
+        # Read the number of tetrahedra (computational elements) and their definitions
+        self.N_tets = mesh_data.cells_dict['tetra'].shape[0]
+        self.tets = mesh_data.cells_dict['tetra']
+
+    # Properties -------------------------------------------------------------------------------------------------------
+    @property
+    def EToV(self):
+        """numpy.ndarray: An (self.N_tets x 4) array containing the 4 indices of the vertices of the self.N_tets
+               tetrahedra that make up the mesh. It returns the value in self.tets, since it is the same data."""
+        return self.tets
+    # ------------------------------------------------------------------------------------------------------------------
+
+
