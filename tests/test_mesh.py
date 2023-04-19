@@ -1,6 +1,7 @@
 """Tests for the edg_acoustics.mesh module.
 """
 import pytest
+import numpy
 
 import edg_acoustics
 
@@ -72,3 +73,19 @@ def test_mesh_file_missing_label_invalid_input(mesh_file_data_valid, BC_labels_d
 
     assert "[edg_acoustics.Mesh] All BC labels must be present in the mesh and all labels in the mesh must be " \
                 "present in BC_labels." in str(excinfo.value)
+
+def test_mesh_connectivity(mesh_file_data_valid, BC_labels_data_valid):
+    # Initialize the mesh
+    mesh = edg_acoustics.Mesh(mesh_file_data_valid, BC_labels_data_valid)
+
+    # Load the reference data
+    reference_data = numpy.load('../data/tests/mesh/CoarseMesh_connectivity.npz')
+
+    # Check if mesh.EToV was correctly generated
+    assert (mesh.EToV - reference_data['EToV']).sum() == 0
+
+    # Check if mesh.EToE was correctly generated
+    assert (mesh.EToE - reference_data['EToE']).sum() == 0
+
+    # Check if mesh.EToF was correctly generated
+    assert (mesh.EToF - reference_data['EToF']).sum() == 0
