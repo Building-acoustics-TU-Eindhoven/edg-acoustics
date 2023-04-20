@@ -82,10 +82,10 @@ def test_mesh_connectivity(mesh_file_data_valid, BC_labels_data_valid):
     reference_data = numpy.load('../data/tests/mesh/CoarseMesh_connectivity.npz')
 
     # Check if mesh.EToV was correctly generated
-    assert (mesh.EToV - reference_data['EToV']).sum() == 0
+    assert numpy.abs(mesh.EToV - reference_data['EToV']).sum() == 0
 
     # Check if mesh.EToE was correctly generated
-    assert (mesh.EToE - reference_data['EToE']).sum() == 0
+    assert numpy.abs(mesh.EToE - reference_data['EToE']).sum() == 0
 
     # Check if mesh.EToF was correctly generated
-    assert (mesh.EToF - reference_data['EToF']).sum() == 0
+    assert numpy.abs(mesh.EToF - reference_data['EToF']).sum() == 0

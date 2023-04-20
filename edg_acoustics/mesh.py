@@ -184,7 +184,7 @@ class Mesh:
         EToE = numpy.arange(0, N_tets).reshape([1, -1]).repeat(repeats=N_faces_per_tet, axis=0)
 
         # EToF must be initialized with (the face index)
-        # EToE = [[  0  0  0  ... 0]       |
+        # EToF = [[  0  0  0  ... 0]       |
         #         [  1  1  1  ... 1]       |> has N_tets columns
         #         [  2  2  2  ... 2]       |
         #         [  3  3  3  ... 3]]      |
@@ -213,7 +213,7 @@ class Mesh:
         # We wrap numpy.where with numpy.array to get and numpy.array instead of a tuple, we do this because later we
         # need to use these indices and these indices +1, with tuple is not possible. The flatten in the end is to avoid
         # having [[]], which means an extra (unused) dimension in the array.
-        interior_face_id_idx = numpy.array(numpy.where(face_ids[0:-2] == face_ids[1:-1])).flatten()
+        interior_face_id_idx = numpy.array(numpy.where(face_ids[0:-1] == face_ids[1:])).flatten()
 
         # With the indices of face_ids we can compute the indices of the faces associated to the face definition on an
         # element (L) and the neighboring element (R). The interior_faces_face_id_idx corresponds to the indices on the
