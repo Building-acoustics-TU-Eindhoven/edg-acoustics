@@ -89,8 +89,6 @@ class Mesh:
         self.__init_from_file(filename, BC_labels)
 
     def __init_from_file(self, filename: str, BC_labels: dict[str, int]):
-        print("Init from filename")
-
         # Load mesh data from mesh file
         mesh_data = meshio.read(filename)
 
