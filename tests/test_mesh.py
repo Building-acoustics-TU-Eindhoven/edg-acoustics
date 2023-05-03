@@ -2,6 +2,7 @@
 """
 import pytest
 import numpy
+import pickle
 
 import edg_acoustics
 
@@ -11,7 +12,7 @@ def mesh_file_data_valid():
     """Define valid file input data for mesh generation.
     """
     # The valid filename with mesh data
-    filename = "../data/tests/mesh/CoarseMesh.msh"
+    filename = "data/tests/mesh/CoarseMesh.msh"
 
     return filename
 
@@ -56,12 +57,20 @@ def BC_labels_data_missing_invalid():
 
 
 def test_mesh_file_data_valid_input(mesh_file_data_valid, BC_labels_data_valid):
+    # Load reference mesh from file
+    with open('data/tests/mesh/Coarse_mesh_object.dat', 'rb') as mesh_file:
+        mesh_ref = pickle.load(mesh_file)
+
+    # Load mesh data from gmsh file
     mesh = edg_acoustics.Mesh(mesh_file_data_valid, BC_labels_data_valid)
+
+    # Compare mesh to reference data
+    assert (mesh == mesh_ref)
 
 
 def test_mesh_file_extra_label_invalid_input(mesh_file_data_valid, BC_labels_data_extra_invalid):
     with pytest.raises(ValueError) as excinfo:
-        mesh = edg_acoustics.Mesh(mesh_file_data_valid, BC_labels_data_extra_invalid)
+        _ = edg_acoustics.Mesh(mesh_file_data_valid, BC_labels_data_extra_invalid)
 
     assert "[edg_acoustics.Mesh] All BC labels must be present in the mesh and all labels in the mesh must be " \
                 "present in BC_labels." in str(excinfo.value)
@@ -69,7 +78,7 @@ def test_mesh_file_extra_label_invalid_input(mesh_file_data_valid, BC_labels_dat
 
 def test_mesh_file_missing_label_invalid_input(mesh_file_data_valid, BC_labels_data_missing_invalid):
     with pytest.raises(ValueError) as excinfo:
-        mesh = edg_acoustics.Mesh(mesh_file_data_valid, BC_labels_data_missing_invalid)
+        _ = edg_acoustics.Mesh(mesh_file_data_valid, BC_labels_data_missing_invalid)
 
     assert "[edg_acoustics.Mesh] All BC labels must be present in the mesh and all labels in the mesh must be " \
                 "present in BC_labels." in str(excinfo.value)
@@ -79,7 +88,7 @@ def test_mesh_connectivity(mesh_file_data_valid, BC_labels_data_valid):
     mesh = edg_acoustics.Mesh(mesh_file_data_valid, BC_labels_data_valid)
 
     # Load the reference data
-    reference_data = numpy.load('../data/tests/mesh/CoarseMesh_connectivity.npz')
+    reference_data = numpy.load('data/tests/mesh/CoarseMesh_connectivity.npz')
 
     # Check if mesh.EToV was correctly generated
     assert numpy.abs(mesh.EToV - reference_data['EToV']).sum() == 0
