@@ -68,9 +68,9 @@ class Mesh:
         N_BC_triangles (dict[str, int]): the number of triangles on the boundary of the domain associated to each
             boundary label in self.BC_labels. For example self.N_BC_triangles['my_label'] returns the number of boundary
             triangles associated to lable 'my_label'. 'my_label' must be a key of self.BC_labels.
-        vertices (numpy.ndarray): An (self.N_vertices x M) array containing the M coordinates of the self.N_vertices vertices that make up
-            the mesh. M specifies the geometric dimension of the mesh, such that the mesh describes an M-dimensional
-            domain.
+        vertices (numpy.ndarray): An (self.N_vertices x M) array containing the M coordinates of the self.N_vertices
+            vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
+            describes an M-dimensional domain.
         tets (numpy.ndarray): An (self.N_tets x 4) array containing the 4 indices of the vertices of the self.N_tets
                tetrahedra that make up the mesh.
         BC_triangles (dict[str, numpy.ndarray]):
@@ -78,10 +78,14 @@ class Mesh:
     Example:
         An element of this class can be initialized in the following way
 
-            >>> import edg_acoustics
-            >>> BC_labels = {'slip': 11, 'impedance1': 13, 'impedance2': 14, 'impedance3': 15}
-            >>> filename = "../data/tests/mesh/CoarseMesh.msh"
-            >>> mesh = edg_acoustics.Mesh(filename, BC_labels)
+        >>> import edg_acoustics
+        >>> BC_labels = {'slip': 11, 'impedance1': 13, 'impedance2': 14, 'impedance3': 15}
+        >>> filename = "../data/tests/mesh/CoarseMesh.msh"
+        >>> mesh = edg_acoustics.Mesh(filename, BC_labels)
+        <BLANKLINE>
+        >>> mesh.N_BC_triangles
+        {'slip': 5347, 'impedance1': 400, 'impedance2': 3576, 'impedance3': 3294}
+
     """
 
     def __init__(self, filename: str, BC_labels: dict[str, int]):
