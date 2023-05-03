@@ -79,8 +79,8 @@ class Mesh:
         An element of this class can be initialized in the following way
 
             >>> import edg_acoustics
-            >>> BC_labels = {'CNRBC': 12, 'slip': 11, 'impedance': 33}
-            >>> filename = "path_to_my_mesh_file/mesh_filename.msh"
+            >>> BC_labels = {'slip': 11, 'impedance1': 13, 'impedance2': 14, 'impedance3': 15}
+            >>> filename = "data/tests/mesh/CoarseMesh.msh"
             >>> mesh = edg_acoustics.Mesh(filename, BC_labels)
     """
 
