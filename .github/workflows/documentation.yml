@@ -4,9 +4,11 @@ on:
   push:
     branches:
     - main
+    - development
   pull_request:
     branches:
     - main
+    - development
 
 jobs:
   build-documentation:
@@ -30,7 +32,7 @@ jobs:
           python3 -m pip install --upgrade pip setuptools
           python3 -m pip install .[dev,publishing]
       - name: Install pandoc using apt
-        run: sudo apt install pandoc        
+        run: sudo apt install pandoc
       - name: Build documentation
         run: make coverage doctest html
         working-directory: docs
