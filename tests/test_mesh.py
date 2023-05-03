@@ -11,7 +11,7 @@ def mesh_file_data_valid():
     """Define valid file input data for mesh generation.
     """
     # The valid filename with mesh data
-    filename = "../data/tests/mesh/CoarseMesh.msh"
+    filename = "data/tests/mesh/CoarseMesh.msh"
 
     return filename
 
@@ -79,7 +79,7 @@ def test_mesh_connectivity(mesh_file_data_valid, BC_labels_data_valid):
     mesh = edg_acoustics.Mesh(mesh_file_data_valid, BC_labels_data_valid)
 
     # Load the reference data
-    reference_data = numpy.load('../data/tests/mesh/CoarseMesh_connectivity.npz')
+    reference_data = numpy.load('data/tests/mesh/CoarseMesh_connectivity.npz')
 
     # Check if mesh.EToV was correctly generated
     assert numpy.abs(mesh.EToV - reference_data['EToV']).sum() == 0
