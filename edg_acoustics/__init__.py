@@ -1,7 +1,7 @@
 """Documentation about edg_acoustics"""
 import logging
-
 from .mesh import *
+
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
