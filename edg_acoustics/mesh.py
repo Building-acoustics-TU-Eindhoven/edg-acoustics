@@ -101,7 +101,7 @@ class Mesh:
         self.vertices = mesh_data.points
 
         # Check if all labels provided as input exist in the mesh data and vice versa, if not, raise error
-        BC_labels_in_mesh = sorted(numpy.unique(mesh_data.cell_data_dict['gmsh:physical']['triangle']))  # get all labels in the mesh, sort for faster comparison below
+        BC_labels_in_mesh = sorted(numpy.unique(mesh_data.cell_data_dict['gmsh:physical']['triangle']))  # get labels in the mesh, sort for faster comparison below
         BC_labels_in_input = sorted(BC_labels.values())  # get all labels specified in input
         if not BC_labels_in_input == BC_labels_in_mesh:
             raise ValueError(
@@ -109,8 +109,8 @@ class Mesh:
                 "present in BC_labels.")
 
         # Read the boundary triangles and their definitions separating them into the different boundary condition labels
-        self.N_BC_triangles = dict()
-        self.BC_triangles = dict()
+        self.N_BC_triangles = {}
+        self.BC_triangles = {}
         for BC_label in BC_labels:
             triangles_have_label = (mesh_data.cell_data_dict['gmsh:physical']['triangle'] == BC_labels[BC_label])  # array with bools specifying if triangle has BC_label or not
             self.N_BC_triangles[BC_label] = triangles_have_label.sum()  # number of triangles with label BC_label
@@ -123,6 +123,23 @@ class Mesh:
         # Compute the mesh connectivity
         self.EToE, self.EToF = self.__compute_element_connectivity(self.tets)
 
+    # Operators --------------------------------------------------------------------------------------------------------
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            # If self and other are mesh objects then check if all properties contain the same data
+            are_equal = (self.N_vertices == other.N_vertices
+                         and self.N_tets == other.N_tets
+                         and self.N_BC_triangles == other.N_BC_triangles
+                         and numpy.array_equal(self.vertices, other.vertices)
+                         and numpy.array_equal(self.tets, other.tets)
+                         and all(numpy.array_equal(item, other.BC_triangles[key]) for key, item in self.BC_triangles.items()))
+        else:
+            # If they are of different types, then they are not the same
+            are_equal = False
+
+        return are_equal
+
+    # ------------------------------------------------------------------------------------------------------------------
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
@@ -156,7 +173,7 @@ class Mesh:
         # Get information on the number of faces, tets, and vertices
         N_faces_per_tet = 4  # number of faces per element
         N_tets = tets.shape[0]  # number of elements in the mesh
-        N_vertices = tets.max() + 1  # number of vertices in the mesh, +1 because indexing starts at 0
+        # N_vertices = tets.max() + 1  # number of vertices in the mesh, +1 because indexing starts at 0
 
         # Create a unique identifier for each face based on the vertices that make up the face
         # the order of the vertices does not matter.
@@ -201,10 +218,8 @@ class Mesh:
         # We now sort the face_ids so that we have the identical faces next to each other
         face_ids_sort_indices = numpy.argsort(face_ids)  # get the ordering that sorts the face_ids
         face_ids = face_ids[face_ids_sort_indices]  # sort the face ids
-        face_vertices = face_vertices[face_ids_sort_indices, :]  # reorder the faces so that their corresponding
-                                                                 # face_ids are sorted
-        face_vertices_idx = face_vertices_idx[face_ids_sort_indices]  # reorder the face indices so that their
-                                                                      # corresponding face_ids are sorted
+        face_vertices = face_vertices[face_ids_sort_indices, :]     # reorder the faces so that their corresponding face_ids are sorted
+        face_vertices_idx = face_vertices_idx[face_ids_sort_indices]  # reorder the face indices so that their corresponding face_ids are sorted
 
         # Find the indices of face_ids of all interior faces, i.e., that are shared by two elements
         # i.e., faces that appear twice (one time for each element)
@@ -257,5 +272,3 @@ class Mesh:
                tetrahedra that make up the mesh. It returns the value in self.tets, since it is the same data."""
         return self.tets
     # ------------------------------------------------------------------------------------------------------------------
-
-

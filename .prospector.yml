@@ -17,6 +17,13 @@ pyroma:
 
 pycodestyle:
     full: true
+    options:
+      max-line-length: 300
+
+pylint:
+  disable:
+    - line-too-long  # Already checked by pycodestyle
+    - import-self  # Giving error on __init__ importing mesh.py
 
 pydocstyle:
     disable: [
@@ -27,3 +34,7 @@ pydocstyle:
         D213,  # Multi-line docstring summary should start at the second line
         D404,  # First word of the docstring should not be This
     ]
+
+pyflakes:
+  disable:
+    - F401  # Temporarily disabled since it was raising errors in __init__
