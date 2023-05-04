@@ -63,17 +63,28 @@ class Mesh:
             is present in the mesh but not in BC_labels, an error is raised.
 
     Attributes:
-        N_vertices (int): The number of vertices that make up the mesh.
-        N_tets (int): The number of tetrahedra that make up the mesh (number of elements).
+        BC_triangles (dict[str, numpy.ndarray]): a dictionary containing the list of triangles that have a certain
+            boundary condition. self.BC_triangles['BC_label'] is a numpy.array with the nodes of each triangle where
+            boundary condition of type 'BC_label' is to be implemented. The nodes defining each triangle in the
+            numpy.array are stored per row.
+        EToE (numpy.ndarray): an (4, N_tets) array containing the information of which elements are neighbors of
+            an element, i.e., EToE[j, i] returns the index of the jth neighbor of element i. The definition of jth
+            neighbor follows the mesh generator's convention.
+        EToF (numpy.ndarray): an (4 x N_tets) array containing the information of which face is shared between the
+            element and its neighbor,  i.e.,  EToF[j, i] returns the face index of the jth neighbor of element i.
+            Face indices follow the same convention as neighbor indices.
         N_BC_triangles (dict[str, int]): the number of triangles on the boundary of the domain associated to each
             boundary label in self.BC_labels. For example self.N_BC_triangles['my_label'] returns the number of boundary
             triangles associated to lable 'my_label'. 'my_label' must be a key of self.BC_labels.
-        vertices (numpy.ndarray): An (self.N_vertices x M) array containing the M coordinates of the self.N_vertices
+        N_tets (int): The number of tetrahedra that make up the mesh (number of elements).
+        N_vertices (int): The number of vertices that make up the mesh.
+        tets (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the self.N_tets
+               tetrahedra that make up the mesh.
+        vertices (numpy.ndarray): An (M x self.N_vertices) array containing the M coordinates of the self.N_vertices
             vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
             describes an M-dimensional domain.
-        tets (numpy.ndarray): An (self.N_tets x 4) array containing the 4 indices of the vertices of the self.N_tets
-               tetrahedra that make up the mesh.
-        BC_triangles (dict[str, numpy.ndarray]):
+
+
 
     Example:
         An element of this class can be initialized in the following way
@@ -100,7 +111,7 @@ class Mesh:
 
         # Read the number of points and their coordinates
         self.N_vertices = mesh_data.points.shape[0]
-        self.vertices = mesh_data.points
+        self.vertices = mesh_data.points.transpose()
 
         # Check if all labels provided as input exist in the mesh data and vice versa, if not, raise error
         BC_labels_in_mesh = sorted(numpy.unique(mesh_data.cell_data_dict['gmsh:physical']['triangle']))  # get labels in the mesh, sort for faster comparison below
@@ -120,7 +131,7 @@ class Mesh:
 
         # Read the number of tetrahedra (computational elements) and their definitions
         self.N_tets = mesh_data.cells_dict['tetra'].shape[0]
-        self.tets = mesh_data.cells_dict['tetra']
+        self.tets = mesh_data.cells_dict['tetra'].transpose()
 
         # Compute the mesh connectivity
         self.EToE, self.EToF = self.__compute_element_connectivity(self.tets)
@@ -159,12 +170,12 @@ class Mesh:
                 convention as neighbor indices.
 
         Args:
-            tets (numpy.ndarray): An (N_tets x 4) array containing the 4 indices of the vertices of the N_tets
+            tets (numpy.ndarray): An (4 x N_tets) array containing the 4 indices of the vertices of the N_tets
                tetrahedra that make up the mesh. Another name for this quantity in terms of connectivity relations is
                EToV (the vertices in each element).
 
         Returns:
-            EToE (numpy.ndarray): an (4, N_tets) array containing the information of which elements are neighbors of
+            EToE (numpy.ndarray): an (4 x N_tets) array containing the information of which elements are neighbors of
                 an element, i.e., EToE[j, i] returns the index of the jth neighbor of element i. The definition of jth
                 neighbor follows the mesh generator's convention.
             EToF (numpy.ndarray): an (4 x N_tets) array containing the information of which face is shared between the
@@ -172,9 +183,12 @@ class Mesh:
                 Face indices follow the same convention as neighbor indices.
         """
 
+        # Transpose tets for the algorithm
+        tets_t = tets.transpose()
+
         # Get information on the number of faces, tets, and vertices
         N_faces_per_tet = 4  # number of faces per element
-        N_tets = tets.shape[0]  # number of elements in the mesh
+        N_tets = tets.shape[1]  # number of elements in the mesh
         # N_vertices = tets.max() + 1  # number of vertices in the mesh, +1 because indexing starts at 0
 
         # Create a unique identifier for each face based on the vertices that make up the face
@@ -186,7 +200,7 @@ class Mesh:
         #    Face 1: made up of vertices [0, 1, 3]
         #    Face 2: made up of vertices [1, 2, 3]
         #    Face 3: made up of vertices [0, 2, 3]
-        face_vertices = numpy.vstack([tets[:, [0, 1, 2]], tets[:, [0, 1, 3]], tets[:, [1, 2, 3]], tets[:, [0, 2, 3]]])
+        face_vertices = numpy.vstack([tets_t[:, [0, 1, 2]], tets_t[:, [0, 1, 3]], tets_t[:, [1, 2, 3]], tets_t[:, [0, 2, 3]]])
 
         # Then we sort the indices in each face, so that we can easily identify if two faces are the same by the ordered
         # sequence of nodes
