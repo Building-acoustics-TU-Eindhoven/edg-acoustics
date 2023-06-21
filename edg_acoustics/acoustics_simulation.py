@@ -74,6 +74,7 @@ class AcousticsSimulation:
 
     """
 
+    NODETOL = 1e-7 #define a tolrance value as class variable 
     def __init__(self, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int]):
         # Check if BC_list and mesh are compatible
         if not self.__check_BC_list(BC_list, mesh):
@@ -93,7 +94,10 @@ class AcousticsSimulation:
         self.rst = None
         self.V = None
         self.M = None
-        self.D = None
+        self.Dr = None
+        self.Ds = None
+        self.Dt = None
+        self.Fmask=None
 
     def init_local_system(self):
         """Compute local system matrices and local variables.
@@ -110,24 +114,25 @@ class AcousticsSimulation:
             - self.rst
             - self.V
             - self.M
-            - self.D
+            - self.Dr, self.Ds, self.Dt
 
         Args:
 
         Returns:
         """
-        # Compute reference element (rst) coordinates of collocation points and the physical domain (xyz) coordinates
-        # for each element.
-        # These are so called Fekete points (low, close to optimal, Lebesgue constant) on simplices of dimension
-        # self.dim and maximum polynomial degree to interpolate over these nodes (determines the number of nodes).
-        # self.rst = modepy.warp_and_blend_nodes(self.dim, self.Nx)
-        self.rst, self.xyz = self.__compute_collocation_nodes(self.mesh.EToV, self.mesh.vertices, self.Nx, dim=self.dim)
+
+        self.rst, self.xyz = self.__compute_collocation_nodes(
+            self.mesh.EToV, self.mesh.vertices, self.Nx, dim=self.dim)
 
         # Compute the van der Monde matrix
         self.V = self.__compute_van_der_monde_matrix(self.Nx, self.rst)
 
         # Compute mass matrix
         self.M = self.__compute_mass_matrix(self.V)
+
+        
+        self.Dr, self.Ds, self.Dt = self.__compute_derivative_matrix(self.Nx, self.rst)
+
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
@@ -149,7 +154,72 @@ class AcousticsSimulation:
             is_compatible (bool): a flag specifying if BC_list is compatible with the mesh or not.
         """
         return BC_list.keys() == mesh.BC_triangles.keys()
+    
+    @staticmethod
+    def __compute_collocation_nodes(EToV: numpy.ndarray, vertices: numpy.ndarray, Nx: int, dim: int = 3):
+        """
+        Compute reference element (rst) coordinates of collocation points and the physical domain (xyz) coordinates
+        self.dim and maximum polynomial degree to interpolate over these nodes (determines the number of nodes).
+        for each element.These are so called Fekete points (low, close to optimal, Lebesgue constant) on simplices of dimension
+        self.rst = modepy.warp_and_blend_nodes(self.dim, self.Nx)
 
+        Args:
+            EToV (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
+               tetrahedra that make up the mesh.
+            vertices (numpy.ndarray): An (M x self.N_vertices) array containing the M coordinates of the self.N_vertices
+                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
+                describes an M-dimensional domain.
+            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
+                propagation problem.
+            dim (int): the geometric dimension of the space where the acoustic problem is solved. Always set to 3.
+
+        Returns:
+            rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
+                ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
+                the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
+                ``rst[2]`` contains the t-coordinates.
+            xyz (numpy.ndarray): the physical space coordinates :math:`(x, y, z)` of the collocation points of each
+                element of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
+                 ``xyz[2]`` contains the z-coordinates.
+        """
+
+        # Compute reference element (rst) coordinates of collocation points and the physical domain (xyz) coordinates
+        # for each element.
+        # These are so called Fekete points (low, close to optimal, Lebesgue constant) on simplices of dimension
+        # self.dim and maximum polynomial degree to interpolate over these nodes (determines the number of nodes).
+        rst = modepy.warp_and_blend_nodes(dim, Nx) 
+
+        # Compute the xyz coordinates for each element from the reference domain coordinates and the element's vertices
+
+        # Start by allocating space for the xyz-coordinates for collocation points on each element
+        xyz = numpy.zeros([dim, rst.shape[1], EToV.shape[1]])
+
+        # Then get shorter references for the indices of the references for each of the nodes of the elements
+        # get the indices of the first node of each element
+        vertex_0_idx = EToV[0, :]
+        # get the indices of the second node of each element
+        vertex_1_idx = EToV[1, :]
+        # get the indices of the third node of each element
+        vertex_2_idx = EToV[2, :]
+        # get the indices of the fourth node of each element
+        vertex_3_idx = EToV[3, :]
+
+        # Get shorter references for the r, s, and t coordinates, and the sum r + s + t
+        rst_sum = rst.sum(axis=0).reshape([-1, 1])
+        r = rst[0, :].reshape([-1, 1])
+        s = rst[1, :].reshape([-1, 1])
+        t = rst[2, :].reshape([-1, 1])
+
+        # Compute the xyz coordinates
+        xyz[0] = 0.5 * (-(1.0 + rst_sum) * vertices[0, vertex_0_idx] + (1.0 + r) * vertices[0, vertex_1_idx] +
+                        (1.0 + s) * vertices[0, vertex_2_idx] + (1.0 + t) * vertices[0, vertex_3_idx])
+        xyz[1] = 0.5 * (-(1.0 + rst_sum) * vertices[1, vertex_0_idx] + (1.0 + r) * vertices[1, vertex_1_idx] +
+                        (1.0 + s) * vertices[1, vertex_2_idx] + (1.0 + t) * vertices[1, vertex_3_idx])
+        xyz[2] = 0.5 * (-(1.0 + rst_sum) * vertices[2, vertex_0_idx] + (1.0 + r) * vertices[2, vertex_1_idx] +
+                        (1.0 + s) * vertices[2, vertex_2_idx] + (1.0 + t) * vertices[2, vertex_3_idx])
+
+        # Return the computed coordinates
+        return rst, xyz
     @staticmethod
     def __compute_van_der_monde_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
         """Compute the van der Monde matrix.
@@ -178,9 +248,10 @@ class AcousticsSimulation:
         """
 
         # Compute the orthonormal polynomial basis of degree Nx and geometric dimension dim
-        simplex_basis = modepy.modes.simplex_onb(Nx, dim)
+        simplex_basis = modepy.modes.simplex_onb(dim,Nx)
 
         # Compute van der Monde matrix of simplex_basis over the nodes in rst
+
         return modepy.vandermonde(simplex_basis, rst)
 
     @staticmethod
@@ -205,67 +276,36 @@ class AcousticsSimulation:
         # Computes and returns the mass matrix V^{-t} V^{-1}
         return V_inv.transpose() @ V_inv
 
+
     @staticmethod
-    def __compute_collocation_nodes(EToV: numpy.ndarray, vertices: numpy.ndarray, Nx: int, dim: int = 3):
-        """Compute the mass matrix from the van der Monde Matrix.
-
-        Given the van der Monde matrix :math:`V`, compute the mass matrix :math:`M = V^{-t}V^{-1}`.
-
+    def __compute_derivative_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
+        """Compute the derivative matrix.
 
         Args:
-            EToV (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
-               tetrahedra that make up the mesh.
-            vertices (numpy.ndarray): An (M x self.N_vertices) array containing the M coordinates of the self.N_vertices
-                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
-                describes an M-dimensional domain.
             Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
                 propagation problem.
-            dim (int): the geometric dimension of the space where the acoustic problem is solved. Always set to 3.
-
-        Returns:
             rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
                 ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
                 the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
                 ``rst[2]`` contains the t-coordinates.
-            xyz (numpy.ndarray): the physical space coordinates :math:`(x, y, z)` of the collocation points of each
-                element of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
-                 ``xyz[2]`` contains the z-coordinates.
+            dim (int): the geometric dimension of the space where the acoustic problem is solved. Always set to 3.
+
+        Returns:
+            Return matrices carrying out differentiation on nodal values in the (r,s,t) unit directions. 
         """
 
-        # Compute reference element (rst) coordinates of collocation points and the physical domain (xyz) coordinates
-        # for each element.
-        # These are so called Fekete points (low, close to optimal, Lebesgue constant) on simplices of dimension
-        # self.dim and maximum polynomial degree to interpolate over these nodes (determines the number of nodes).
-        rst = modepy.warp_and_blend_nodes(dim, Nx)
+        # Compute the orthonormal polynomial basis of degree Nx and geometric dimension dim
+        simplex_basis = modepy.simplex_onb(dim,Nx)
 
-        # Compute the xyz coordinates for each element from the reference domain coordinates and the element's vertices
+        # Compute the grad of orthonormal polynomial basis of degree Nx and geometric dimension dim
+        grad_simplex_basis = modepy.grad_simplex_onb(dim,Nx)
 
-        # Start by allocating space for the xyz-coordinates for collocation points on each element
-        xyz = numpy.zeros([dim, rst.shape[1], EToV.shape[1]])
 
-        # Then get shorter references for the indices of the references for each of the nodes of the elements
-        vertex_0_idx = EToV[0, :]  # get the indices of the first node of each element
-        vertex_1_idx = EToV[1, :]  # get the indices of the second node of each element
-        vertex_2_idx = EToV[2, :]  # get the indices of the third node of each element
-        vertex_3_idx = EToV[3, :]  # get the indices of the fourth node of each element
+        # Compute differentiation matrix of simplex_basis over the nodes in rst
 
-        # Get shorter references for the r, s, and t coordinates, and the sum r + s + t
-        rst_sum = rst.sum(axis=0).reshape([-1, 1])
-        r = rst[0, :].reshape([-1, 1])
-        s = rst[1, :].reshape([-1, 1])
-        t = rst[2, :].reshape([-1, 1])
+        D=modepy.differentiation_matrices(simplex_basis,grad_simplex_basis, rst)
 
-        # Compute the xyz coordinates
-        xyz[0] = 0.5 * (-(1.0 + rst_sum) * vertices[0, vertex_0_idx] + (1.0 + r) * vertices[0, vertex_1_idx] +
-                        (1.0 + s) * vertices[0, vertex_2_idx] + (1.0 + t) * vertices[0, vertex_3_idx])
-        xyz[1] = 0.5 * (-(1.0 + rst_sum) * vertices[1, vertex_0_idx] + (1.0 + r) * vertices[1, vertex_1_idx] +
-                        (1.0 + s) * vertices[1, vertex_2_idx] + (1.0 + t) * vertices[1, vertex_3_idx])
-        xyz[2] = 0.5 * (-(1.0 + rst_sum) * vertices[2, vertex_0_idx] + (1.0 + r) * vertices[2, vertex_1_idx] +
-                        (1.0 + s) * vertices[2, vertex_2_idx] + (1.0 + t) * vertices[2, vertex_3_idx])
-
-        # Return the computed coordinates
-        return rst, xyz
-
+        return D[0],D[1],D[2]
     # ------------------------------------------------------------------------------------------------------------------
 
     # Properties -------------------------------------------------------------------------------------------------------
