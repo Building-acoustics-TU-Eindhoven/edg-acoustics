@@ -74,7 +74,7 @@ class AcousticsSimulation:
 
     """
 
-    NODETOL = 1e-7 #define a tolrance value as class variable 
+  
     def __init__(self, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int]):
         # Check if BC_list and mesh are compatible
         if not self.__check_BC_list(BC_list, mesh):
@@ -88,7 +88,11 @@ class AcousticsSimulation:
         self.Nt = Nt
         self.BC_list = BC_list
         self.dim = 3  # we are always in 3D, just added for external reference
+        # compute attributes
+        self.Np=int((Nx+1)*(Nx+2)*(Nx+3)/6)
+        self.Nfp =int((Nx+1)*(Nx+2)/2)
 
+        self.NODETOL = 1e-7 #define a tolrance value as class variable 
         # Set other attributes as None, since they are not yet initialized
         self.xyz = None
         self.rst = None
@@ -98,6 +102,7 @@ class AcousticsSimulation:
         self.Ds = None
         self.Dt = None
         self.Fmask=None
+        self.lift=None
 
     def init_local_system(self):
         """Compute local system matrices and local variables.
@@ -111,11 +116,12 @@ class AcousticsSimulation:
 
         Updates:
             - self.xyz
-            - self.rst
-            - self.V
+            - self.rst (3* Np)
+            - self.V self.inV
             - self.M
             - self.Dr, self.Ds, self.Dt
-
+            - self.Fmask (4*Nfp)
+            - self.lift
         Args:
 
         Returns:
@@ -124,8 +130,9 @@ class AcousticsSimulation:
         self.rst, self.xyz = self.__compute_collocation_nodes(
             self.mesh.EToV, self.mesh.vertices, self.Nx, dim=self.dim)
 
-        # Compute the van der Monde matrix
+        # Compute the van der Monde matrix and its inverse
         self.V = self.__compute_van_der_monde_matrix(self.Nx, self.rst)
+        self.inV = numpy.linalg.inv(self.V)
 
         # Compute mass matrix
         self.M = self.__compute_mass_matrix(self.V)
@@ -133,6 +140,11 @@ class AcousticsSimulation:
         
         self.Dr, self.Ds, self.Dt = self.__compute_derivative_matrix(self.Nx, self.rst)
 
+        self.Fmask=self.__compute_Fmask(self.rst,self.Nfp,self.NODETOL)
+
+        self.lift=self.__compute_lift(self.V,self.Nx,self.rst,self.Fmask,self.Np, self.Nfp)
+
+        print(self.Fmask)
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
@@ -187,7 +199,7 @@ class AcousticsSimulation:
         # for each element.
         # These are so called Fekete points (low, close to optimal, Lebesgue constant) on simplices of dimension
         # self.dim and maximum polynomial degree to interpolate over these nodes (determines the number of nodes).
-        rst = modepy.warp_and_blend_nodes(dim, Nx) 
+        rst = modepy.warp_and_blend_nodes(dim, Nx)
 
         # Compute the xyz coordinates for each element from the reference domain coordinates and the element's vertices
 
@@ -307,6 +319,77 @@ class AcousticsSimulation:
 
         return D[0],D[1],D[2]
     # ------------------------------------------------------------------------------------------------------------------
+    @staticmethod
+    def __compute_Fmask(rst: numpy.ndarray,Nfp: int, NODETOL: float):
+        """Compute the face nodes indices.
+
+        Args:
+            rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
+                ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
+                the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
+                ``rst[2]`` contains the t-coordinates.
+            Nfp (int): number of nodes per surface
+
+        Returns:
+            Fmask (numpy.ndarray): an (4*Nfp) array containing indices of nodes per surface
+        """
+        Fmask=numpy.zeros([ 4,Nfp], dtype=numpy.uint8)
+        # find all the nodes that lie on each surface
+        Fmask[0] = numpy.flatnonzero(numpy.abs(1+rst[2]) < NODETOL)
+        Fmask[1] = numpy.flatnonzero(numpy.abs(1+rst[1]) < NODETOL)
+        Fmask[2] = numpy.flatnonzero(numpy.abs(1+rst.sum(axis=0)) < NODETOL)
+        Fmask[3] = numpy.flatnonzero(numpy.abs(1+rst[0]) < NODETOL)
+
+        return Fmask
+    
+    @staticmethod
+    def __compute_lift(V:numpy.ndarray, Nx: int, rst: numpy.ndarray, Fmask: numpy.uint8, Np:int, Nfp:int ):
+        """Compute the lift matrix.
+
+        Args:
+            V (numpy.ndarray): Vandermonde matrix
+            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
+                propagation problem.
+            rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
+                ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
+                the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
+                ``rst[2]`` contains the t-coordinates.
+            Fmask (numpy.ndarray): an (4*Nfp) array containing indices of nodes per surface.
+            Nfp (int): number of nodes per surface.
+
+        Returns:
+            Return lift matrices carrying out surface integral. 
+        """
+        Emat=numpy.zeros([Np,Nfp*4], dtype=numpy.float64)
+        faceR=numpy.zeros([1,Nfp])
+        faceS=numpy.zeros([1,Nfp])
+
+        for face in range(4):
+            if face==0:
+                faceR=rst[0,Fmask[0]]
+                faceS=rst[1,Fmask[0]]
+            elif face==1:
+                faceR=rst[0,Fmask[1]]
+                faceS=rst[2,Fmask[1]]
+            elif face==2:
+                faceR=rst[1,Fmask[2]]
+                faceS=rst[2,Fmask[2]]
+            else:
+                faceR=rst[1,Fmask[3]]
+                faceS=rst[2,Fmask[3]]
+            
+            simplex_basis = modepy.simplex_onb(2,Nx)
+            vandermondeFace=modepy.vandermonde(simplex_basis, numpy.vstack((faceR,faceS)))   
+            massFace=numpy.linalg.inv(vandermondeFace@ (vandermondeFace.transpose()))  
+
+            Emat[Fmask[face],face*Nfp:(face+1)*Nfp]+=massFace
+
+        print(Emat)
+            
+        return V@(V.transpose()@Emat)
+
+
+
 
     # Properties -------------------------------------------------------------------------------------------------------
     # @property
