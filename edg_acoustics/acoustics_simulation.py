@@ -16,9 +16,9 @@ Discretisation
    AcousticsSimulation
 """
 from __future__ import annotations
-import edg_acoustics
 import modepy
 import numpy
+import edg_acoustics
 
 
 __all__ = ['AcousticsSimulation']
