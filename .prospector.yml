@@ -21,6 +21,9 @@ pycodestyle:
       max-line-length: 300
 
 pylint:
+  options:
+    max-args: 8
+    max-locals: 20
   disable:
     - line-too-long  # Already checked by pycodestyle
     - import-self  # Giving error on __init__ importing mesh.py

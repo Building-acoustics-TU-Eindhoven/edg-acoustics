@@ -21,4 +21,3 @@ sim = edg_acoustics.AcousticsSimulation(Nx, Nt, mesh, BC_labels)
 sim.init_local_system()
 
 print('Finished!')
-
