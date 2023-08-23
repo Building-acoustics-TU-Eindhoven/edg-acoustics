@@ -40,37 +40,53 @@ def coarse_mesh_sim():
     """
     return copy.deepcopy(reusable_coarse_mesh_sim)
 
-def test_mesh_connectivity(coarse_mesh_sim):
+def test_geometry_factors_3d(coarse_mesh_sim):
     # Load the reference data
     reference_data = numpy.load('data/tests/acoustics_simulation/CoarseMesh_geometric_factors_3d.npz')
 
     # Check if sim.rx was correctly generated
-    assert numpy.allclose(reference_data['rx'], coarse_mesh_sim.rx, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    assert numpy.allclose(reference_data['rx'], coarse_mesh_sim.rst_xyz[0, 0], rtol=1e-10, atol=1e-10, equal_nan=False) == True
 
     # Check if sim.ry was correctly generated
-    assert numpy.allclose(reference_data['ry'], coarse_mesh_sim.ry, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    assert numpy.allclose(reference_data['ry'], coarse_mesh_sim.rst_xyz[0, 1], rtol=1e-10, atol=1e-10, equal_nan=False) == True
 
     # Check if sim.rz was correctly generated
-    assert numpy.allclose(reference_data['rz'], coarse_mesh_sim.rz, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    assert numpy.allclose(reference_data['rz'], coarse_mesh_sim.rst_xyz[0, 2], rtol=1e-10, atol=1e-10, equal_nan=False) == True
 
     # Check if sim.sx was correctly generated
-    assert numpy.allclose(reference_data['sx'], coarse_mesh_sim.sx, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    assert numpy.allclose(reference_data['sx'], coarse_mesh_sim.rst_xyz[1, 0], rtol=1e-10, atol=1e-10, equal_nan=False) == True
 
     # Check if sim.sy was correctly generated
-    assert numpy.allclose(reference_data['sy'], coarse_mesh_sim.sy, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    assert numpy.allclose(reference_data['sy'], coarse_mesh_sim.rst_xyz[1, 1], rtol=1e-10, atol=1e-10, equal_nan=False) == True
 
     # Check if sim.sz was correctly generated
-    assert numpy.allclose(reference_data['sz'], coarse_mesh_sim.sz, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    assert numpy.allclose(reference_data['sz'], coarse_mesh_sim.rst_xyz[1, 2], rtol=1e-10, atol=1e-10, equal_nan=False) == True
 
     # Check if sim.tx was correctly generated
-    assert numpy.allclose(reference_data['tx'], coarse_mesh_sim.tx, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    assert numpy.allclose(reference_data['tx'], coarse_mesh_sim.rst_xyz[2, 0], rtol=1e-10, atol=1e-10, equal_nan=False) == True
 
     # Check if sim.ty was correctly generated
-    assert numpy.allclose(reference_data['ty'], coarse_mesh_sim.ty, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    assert numpy.allclose(reference_data['ty'], coarse_mesh_sim.rst_xyz[2, 1], rtol=1e-10, atol=1e-10, equal_nan=False) == True
 
     # Check if sim.tz was correctly generated
-    assert numpy.allclose(reference_data['tz'], coarse_mesh_sim.tz, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    assert numpy.allclose(reference_data['tz'], coarse_mesh_sim.rst_xyz[2, 2], rtol=1e-10, atol=1e-10, equal_nan=False) == True
 
     # Check if sim.J was correctly generated
     assert numpy.allclose(reference_data['J'], coarse_mesh_sim.J, rtol=1e-10, atol=1e-10, equal_nan=False) == True
+    
+def test_normals_3d(coarse_mesh_sim):
+    # Load the reference data
+    reference_data = numpy.load('data/tests/acoustics_simulation/CoarseMesh_normals_3d.npz')
+
+    # Check if sim.n_xyz[0] (x-component of normal vector) was correctly generated
+    assert numpy.allclose(reference_data['nx'], coarse_mesh_sim.n_xyz[0], rtol=1e-10, atol=1e-10, equal_nan=False) == True
+
+    # Check if sim.n_xyz[1] (y-component of normal vector) was correctly generated
+    assert numpy.allclose(reference_data['ny'], coarse_mesh_sim.n_xyz[1], rtol=1e-10, atol=1e-10, equal_nan=False) == True
+
+    # Check if sim.n_xyz[2] (z-component of normal vector) was correctly generated
+    assert numpy.allclose(reference_data['nz'], coarse_mesh_sim.n_xyz[2], rtol=1e-10, atol=1e-10, equal_nan=False) == True
+
+    # Check if sim.sJ (face Jacobians) was correctly generated
+    assert numpy.allclose(reference_data['sJ'], coarse_mesh_sim.sJ, rtol=1e-10, atol=1e-10, equal_nan=False) == True
     
