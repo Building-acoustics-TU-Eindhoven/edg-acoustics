@@ -5,10 +5,10 @@ import edg_acoustics
 # print(dir(edg_acoustics))
 
 # Boundary conditions
-BC_labels =  {'slip': 11, 'impedance1': 13, 'impedance2': 14, 'impedance3': 15}
+BC_labels =  {'slip': 11, 'impedance1': 13, 'impedance2': 14}
 
 # Mesh
-mesh_name = 'CoarseMesh.msh'
+mesh_name = 'coarse_cube_room.msh'
 mesh_data_folder = os.path.abspath(os.path.join(os.path.split(os.path.abspath(__file__))[0], os.path.pardir, 'data', 'tests', 'mesh'))
 mesh_filename = os.path.join(mesh_data_folder, mesh_name)
 mesh = edg_acoustics.Mesh(mesh_filename, BC_labels)
