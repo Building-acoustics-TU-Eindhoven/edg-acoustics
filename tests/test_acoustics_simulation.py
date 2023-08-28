@@ -9,12 +9,21 @@ import edg_acoustics
 
 
 def read_mesh_dataset(mesh_option: str = 'coarse'):
-    # Boundary conditions
-    BC_labels =  {'slip': 11, 'impedance1': 13, 'impedance2': 14}
-
-    # Mesh
+    # Mesh and BC conditions
     if mesh_option == 'coarse':
+        # Boundary conditions
+        BC_labels = {'slip': 11, 'impedance1': 13, 'impedance2': 14, 'impedance3': 15}
+
+        # Mesh    
+        mesh_filename = 'data/tests/mesh/CoarseMesh.msh'
+
+    elif mesh_option == 'coarse_cube':
+        # Boundary conditions
+        BC_labels =  {'slip': 11, 'impedance1': 13, 'impedance2': 14}
+        
+        # Mesh    
         mesh_filename = 'data/tests/mesh/coarse_cube_room.msh'
+
     else:
         assert False
 
