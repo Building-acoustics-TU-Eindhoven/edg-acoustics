@@ -60,10 +60,10 @@ class AcousticsSimulation:
         Dt (numpy.ndarray): the reference element differentiation matrices containing the discrete representation
             of :math:`\\frac{\\partial}{\\partial t}`, in the rst reference element coordinate system.
         dim (int): the geometric dimension of the space where the acoustic problem is solved. Always set to 3.
-            Fmask: Needs info.
+        Fmask (numpy.ndarray): a (4 x Nfp) array containing indices of nodes per surface of the tetrahedron.
         J (numpy.ndarray): `[Np, N_tets]`` The determinant of the Jacobian matrix for the coordinate transformation, 
             at the collocation nodes. 
-        lift: Needs info.
+        lift (numpy.ndarray): ``[Np, 4*Nfp]`` an array containing the product of inverse of the mass matrix (3D) with the face-mass matrices (2D).
         M (numpy.ndarray): the reference element mass matrix :math:`M := V^{-t}V^{-1}`.
             mesh (edg_acoustics.Mesh): the mesh object containing the mesh information for the domain discretisation.
         Nfp (int): number of collocation nodes in a face.
@@ -175,10 +175,10 @@ class AcousticsSimulation:
         # Compute the derivative matrices
         self.Dr, self.Ds, self.Dt = self.__compute_derivative_matrix(self.Nx, self.rst)
 
-        # Compute what? TODO
+        # Find all the ``Nfp`` face nodes that lie on each surface.
         self.Fmask=self.__compute_Fmask(self.rst, self.node_tolerance)
 
-        # Compute what? TODO
+        # Compute the product of inverse of the mass matrix (3D) with the face-mass matrices (2D)
         self.lift=self.__compute_lift(self.V, self.rst, self.Fmask)
 
         # Compute the metric terms for the mesh
@@ -343,9 +343,7 @@ class AcousticsSimulation:
             dim (int): the geometric dimension of the space where the acoustic problem is solved. Always set to 3.
 
         Returns:
-            V (numpy.ndarray): the reference element van der Monde matrix of the orthonormal basis functions,
-                :math:`f_{j}`, on the 3D simplices (elements of the mesh), i.e.,
-                :math:`V_{i,j} = f_{j}(r_{i}, s_{i}, t_{i})`.
+            V (numpy.ndarray): the reference element van der Monde matrix of the orthonormal basis functions, :math:`f_{j}`, on the 3D simplices (elements of the mesh), i.e., :math:`V_{i,j} = f_{j}(r_{i}, s_{i}, t_{i})`.
         """
 
         # Compute the orthonormal polynomial basis of degree Nx and geometric dimension dim
@@ -409,7 +407,7 @@ class AcousticsSimulation:
     # ------------------------------------------------------------------------------------------------------------------
     @staticmethod
     def __compute_Fmask(rst: numpy.ndarray, node_tol: float):
-        """Compute the indices of the ``Nfp`` face nodes.
+        """Find all the ``Nfp`` face nodes that lie on each surface.
 
         Args:
             rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
@@ -418,7 +416,8 @@ class AcousticsSimulation:
             node_tol (float): the tolerance used to determine if a node lies on a facet.
 
         Returns:
-            Fmask (numpy.ndarray): a (4 x Nfp) array containing indices of nodes per surface
+            Fmask (numpy.ndarray): ``[4, Nfp]`` an array containing the local indices of the ``Nfp`` nodes on each of the four faces of 
+                the reference element.
         """
         Np = rst.shape[1]  # get the number of collocation points
         Nx = AcousticsSimulation.__compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
@@ -448,7 +447,7 @@ class AcousticsSimulation:
             Fmask (numpy.ndarray): ``[4, Nfp]`` an array containing the local indices of the ``Nfp`` nodes on each of the four faces of 
                 the reference element.
         Returns:
-            Return lift matrices carrying out surface integral TODO: shape. 
+            Return lift (numpy.ndarray): ``[Np, 4*Nfp]`` an array containing the product of inverse of the mass matrix (3D) with the face-mass matrices (2D) 
         """
         Np = V.shape[1]  # get the number of collocation points
         Nx = AcousticsSimulation.__compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
@@ -481,7 +480,6 @@ class AcousticsSimulation:
 
             Emat[Fmask[face], face*Nfp:(face+1)*Nfp] += massFace
 
-        print(Emat)
             
         return V @ (V.transpose() @ Emat)
 

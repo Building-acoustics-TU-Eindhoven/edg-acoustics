@@ -14,7 +14,7 @@ mesh_filename = os.path.join(mesh_data_folder, mesh_name)
 mesh = edg_acoustics.Mesh(mesh_filename, BC_labels)
 
 # Approximation degrees
-Nx = 3  # in space
+Nx = 2  # in space
 Nt = 3  # in time
 
 sim = edg_acoustics.AcousticsSimulation(Nx, Nt, mesh, BC_labels)
