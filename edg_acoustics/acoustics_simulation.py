@@ -63,6 +63,7 @@ class AcousticsSimulation:
         Fmask (numpy.ndarray): a (4 x Nfp) array containing indices of nodes per surface of the tetrahedron.
         J (numpy.ndarray): `[Np, N_tets]`` The determinant of the Jacobian matrix for the coordinate transformation, 
             at the collocation nodes. 
+        sJ: TODO
         lift (numpy.ndarray): ``[Np, 4*Nfp]`` an array containing the product of inverse of the mass matrix (3D) with the face-mass matrices (2D).
         M (numpy.ndarray): the reference element mass matrix :math:`M := V^{-t}V^{-1}`.
             mesh (edg_acoustics.Mesh): the mesh object containing the mesh information for the domain discretisation.
@@ -101,9 +102,12 @@ class AcousticsSimulation:
         V (numpy.ndarray): the reference element van der Monde matrix of the orthonormal basis functions, :math:`f_{j}`, on the
             3D simplices (elements of the mesh), i.e., :math:`V_{i,j} = f_{j}(r_{i}, s_{i}, t_{i})`.
         V3D (numpy.ndarray): TODO
-        xyz (numpy.ndarray): the physical space coordinates :math:`(x, y, z)` of the collocation points of each element of the\
+        xyz (numpy.ndarray): ``[3, Np, N_tets]`` the physical space coordinates :math:`(x, y, z)` of the collocation points of each element of the\
             mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates, ``xyz[2]``
             contains the z-coordinates.
+        n_xyz: TODO
+        vmapM: TODO
+        vmapP: TODO
 
     Example:
         An element of this class can be initialized in the following way
@@ -191,6 +195,9 @@ class AcousticsSimulation:
 
         # Compute the face normals at the collocation points and the surface Jacobians
         self.n_xyz, self.sJ = self.__normals_3d(self.xyz, self.rst_xyz, self.J, self.Fmask)
+
+        self.vmapM, self.vmapP = self.__build_maps_3d(self.xyz, self.mesh.EToE, self.mesh.EToF, self.node_tolerance)
+
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
@@ -283,7 +290,7 @@ class AcousticsSimulation:
                 ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
                 the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
                 ``rst[2]`` contains the t-coordinates.
-            xyz (numpy.ndarray): the physical space coordinates :math:`(x, y, z)` of the collocation points of each
+            xyz (numpy.ndarray): ``[3, Np, N_tets]``the physical space coordinates :math:`(x, y, z)` of the collocation points of each
                 element of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
                  ``xyz[2]`` contains the z-coordinates.
         """
@@ -564,7 +571,7 @@ class AcousticsSimulation:
                         coordinates :math:`z`, i.e., :math:`\\frac{\\partial s}{\\partial z}`, at the collocation nodes.
                     rst_xyz[2, 2]: tz (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
                         coordinates :math:`z`, i.e., :math:`\\frac{\\partial t}{\\partial z}`, at the collocation nodes.
-                J (numpy.ndarray): `[Np, N_tets]`` The determinant of the Jacobian matrix for the coordinate transformation, 
+                J (numpy.ndarray): ``[Np, N_tets]`` The determinant of the Jacobian matrix for the coordinate transformation, 
                     at the collocation nodes. 
         """
         Np = xyz.shape[1]  # the number of collocation points
@@ -649,7 +656,7 @@ class AcousticsSimulation:
                         at each of the ``Nfp`` nodes on each of the 4 facets of each of the ``N_tets`` elements.
                     n_xyz[2, :] (numpy.ndarray): nz ``[4*Np, N_tets]`` The :math:`z`-component of the outward normal :math:`\\vec{n}`
                         at each of the ``Nfp`` nodes on each of the 4 facets of each of the ``N_tets`` elements.
-                sJ (numpy.ndarray): `[4*Np, N_tets]`` The determinant of the surface Jacobian matrix at each of the
+                sJ (numpy.ndarray): ``[4*Np, N_tets]`` The determinant of the surface Jacobian matrix at each of the
                     collocation nodes, for each of the 4 faces of the ``N_tets`` elements. 
         """
         N_tets = xyz.shape[2]  # number of elements
@@ -697,7 +704,44 @@ class AcousticsSimulation:
         sJ = norm_n * J[Fmask.flatten()]
 
         return n_xyz, sJ
+    
 
+    @staticmethod
+    def __build_maps_3d(xyz: numpy.ndarray,EToE: numpy.ndarray, EToF: numpy.ndarray, node_tol: float, dim: int = 3):
+        """Find connectivity for nodes given per surface in all elements
+
+        Args:
+            xyz (numpy.ndarray): ``[3, Np, N_tets]`` the physical space coordinates :math:`(x, y, z)` of the collocation points of each element of the\
+            mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates, ``xyz[2]``
+            contains the z-coordinates.
+            EToE (numpy.ndarray): an (4, N_tets) array containing the information of which elements are neighbors of
+            an element, i.e., EToE[j, i] returns the index of the jth neighbor of element i. The definition of jth
+            neighbor follows the mesh generator's convention.
+            EToF (numpy.ndarray): an (4 x N_tets) array containing the information of which face is shared between the
+            element and its neighbor,  i.e.,  EToF[j, i] returns the face index of the jth neighbor of element i. 
+            Face indices follow the same convention as neighbor indices.
+            node_tol (float): the tolerance used to determine if a node lies on a facet.
+
+        Returns:
+            (tuple): tuple containing:
+                vmapM (numpy.ndarray): ``[4*Nfp, N_tets]`` TODO
+        """
+
+        N_tets = xyz.shape[2]  # number of elements
+        Np = xyz.shape[1]  # number of collocation points
+        Nx = AcousticsSimulation.__compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
+        Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
+
+        nodeids=numpy.arange(N_tets*Np, dtype=numpy.uint64).reshape(Np,N_tets)
+        vmapM=numpy.zeros([4, Nfp], dtype=numpy.uint8)
+
+        # Find all the nodes that lie on each surface
+        Fmask[0] = numpy.flatnonzero(numpy.abs(1+rst[2]) < node_tol)
+        Fmask[1] = numpy.flatnonzero(numpy.abs(1+rst[1]) < node_tol)
+        Fmask[2] = numpy.flatnonzero(numpy.abs(1+rst.sum(axis=0)) < node_tol)
+        Fmask[3] = numpy.flatnonzero(numpy.abs(1+rst[0]) < node_tol)
+
+        return Fmask
 
     # Properties -------------------------------------------------------------------------------------------------------
     # @property
