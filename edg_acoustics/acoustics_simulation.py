@@ -66,6 +66,7 @@ class AcousticsSimulation:
         lift (numpy.ndarray): ``[Np, 4*Nfp]`` an array containing the product of inverse of the mass matrix (3D) with the face-mass matrices (2D).
         M (numpy.ndarray): the reference element mass matrix :math:`M := V^{-t}V^{-1}`.
             mesh (edg_acoustics.Mesh): the mesh object containing the mesh information for the domain discretisation.
+        mesh TODO apalha
         Nfp (int): number of collocation nodes in a face.
         node_tolerance (float): tolerance used to determine if a node lies on a facet.
         Np (int): number of collocation nodes in an element.
@@ -99,6 +100,7 @@ class AcousticsSimulation:
                 coordinates :math:`z`, i.e., :math:`\\frac{\\partial t}{\\partial z}`, at the collocation nodes.
         V (numpy.ndarray): the reference element van der Monde matrix of the orthonormal basis functions, :math:`f_{j}`, on the
             3D simplices (elements of the mesh), i.e., :math:`V_{i,j} = f_{j}(r_{i}, s_{i}, t_{i})`.
+        V3D (numpy.ndarray): TODO
         xyz (numpy.ndarray): the physical space coordinates :math:`(x, y, z)` of the collocation points of each element of the\
             mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates, ``xyz[2]``
             contains the z-coordinates.
@@ -169,6 +171,9 @@ class AcousticsSimulation:
         self.V = self.__compute_van_der_monde_matrix(self.Nx, self.rst)
         self.inV = numpy.linalg.inv(self.V)
 
+        # Compute the van der Monde matrix of the gradients
+        self.V3D = self.__compute_grad_van_der_monde_matrix(self.Nx, self.rst)
+
         # Compute mass matrix
         self.M = self.__compute_mass_matrix(self.V)
 
@@ -229,7 +234,7 @@ class AcousticsSimulation:
         # Since Np is given by:
         #   Np = (Nx + 1)*(Nx + 2)*(Nx + 3)/6
         # to compute Nx from Np we need to solve a third order polynomial equation:
-        # N^3 + 6N^2 + 11N + 6(1 - Np) = 0
+        # Nx^3 + 6Nx^2 + 11Nx + 6(1 - Np) = 0
         polynominal = numpy.polynomial.Polynomial([(6 * (1 - Np)), 11, 6, 1])  # we setup the polynomial
         Nx = int(round(polynominal.roots()[-1].real))  # then we just get the roots and extract the root with the largest real component
 
@@ -325,7 +330,7 @@ class AcousticsSimulation:
     def __compute_van_der_monde_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
         """Compute the van der Monde matrix.
 
-        Computes the vander Monde matrix for an orthonormal basis on the reference simplex. This polynomial basis
+        Computes the van der Monde matrix for an orthonormal basis on the reference simplex. This polynomial basis
         can exactly represent polynomials up to degree ``Nx``.
 
         Consider the set of :math:`n` 3D nodes, with the coordinates of each node :math:`i` equal to
@@ -352,6 +357,44 @@ class AcousticsSimulation:
         # Compute van der Monde matrix of simplex_basis over the nodes in rst
         return modepy.vandermonde(simplex_basis, rst)
 
+    @staticmethod
+    def __compute_grad_van_der_monde_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
+        """Compute the gradient van der Monde matrix.
+
+        Computes the van der Monde matrices for the gradient of an orthonormal basis on the reference simplex. This polynomial basis
+        can exactly represent polynomials up to degree ``Nx``.
+
+        Consider the set of :math:`n` 3D nodes, with the coordinates of each node :math:`i` equal to
+        :math:`(r_{i}, s_{i}, t_{i})`, in ``rst``, and the set of :math:`m` orthonormal basis functions, this van der
+        Monde matrix will be :math:`V_{i,j} = f_{j}(r_{i}, s_{i}, t_{i})`.
+
+
+        Args:
+            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
+                propagation problem.
+            rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
+                ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
+                the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
+                ``rst[2]`` contains the t-coordinates.
+            dim (int): the geometric dimension of the space where the acoustic problem is solved. Always set to 3.
+
+        Returns:
+            V (tuple of numpy.ndarray): the reference element van der Monde matrix of the gradient of the orthonormal 
+                basis functions, :math:`\\nabla f_{j}`, on the 3D simplices (elements of the mesh), i.e.,
+                :math:`\\left(V_{i,j}\\right)_{l} = \\left(\\nabla f_{j}(r_{i}, s_{i}, t_{i})\\right)_{l}`, where :math:`l`
+                is one of the three components of the gradient :math:`(r, s, t)`.
+                The order is the same as for the van der Monde matrix.
+                V[0]: contains the :math:`r`-component of the gradient.
+                V[1]: contains the :math:`s`-component of the gradient.
+                V[2]: contains the :math:`t`-component of the gradient.
+        """
+
+        # Compute the orthonormal polynomial basis of degree Nx and geometric dimension dim
+        simplex_basis = modepy.modes.grad_simplex_onb(dim, Nx)
+
+        # Compute van der Monde matrix of the gradient of simplex_basis over the nodes in rst
+        return modepy.vandermonde(simplex_basis, rst)
+    
     @staticmethod
     def __compute_mass_matrix(V: numpy.ndarray):
         """Compute the mass matrix from the van der Monde Matrix.
