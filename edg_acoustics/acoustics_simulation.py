@@ -455,7 +455,7 @@ class AcousticsSimulation:
         grad_simplex_basis = modepy.grad_simplex_onb(dim,Nx)
 
 
-        # Compute differentiation matrix of simplex_basis over the nodes in rst
+        # Compute differentiation matrix of simplex_basis over the nodes in rst, return a tuple D
         D = modepy.differentiation_matrices(simplex_basis, grad_simplex_basis, rst)
 
         # Return d/dr, d/ds and d/dt matrices
