@@ -206,7 +206,7 @@ class AcousticsSimulation:
 
         self.vmapM, self.vmapP = self.__build_maps_3d(self.xyz, self.mesh.EToE, self.mesh.EToF, self.Fmask, self.node_tolerance)
 
-
+        print(self.vmapM)
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
     def __compute_Np(Nx: int):
@@ -311,7 +311,7 @@ class AcousticsSimulation:
         # Compute the xyz coordinates for each element from the reference domain coordinates and the element's vertices
 
         # Start by allocating space for the xyz-coordinates for collocation points on each element
-        xyz = numpy.zeros([dim, rst.shape[1], EToV.shape[1]], order='F')
+        xyz = numpy.zeros([dim, rst.shape[1], EToV.shape[1]])
 
         # Then get shorter references for the indices of the references for each of the nodes of the elements
         # get the indices of the first node of each element
@@ -781,6 +781,15 @@ class AcousticsSimulation:
                 (idM,idP)=numpy.nonzero(numpy.abs(D) < node_tol)
 
                 vmapP[ke,face,idM]=vmapM[ke2,face2,idP]
+
+        vmapM=numpy.swapaxes(vmapM,0,2)  #to make shape ([Nfp,4, N_tets ])
+        vmapM=numpy.swapaxes(vmapM,0,1)  #to make shape ([4,Nfp, N_tets ])
+
+        vmapP=numpy.swapaxes(vmapP,0,2)
+        vmapP=numpy.swapaxes(vmapP,0,1)
+
+
+        # print(vmapM)
 
         return vmapM.reshape(-1), vmapP.reshape(-1)
                 ## below are Fortran order, exactly copy of MATLAB
