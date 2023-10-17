@@ -64,7 +64,9 @@ class AcousticsSimulation:
         J: (numpy.ndarray): ``[Np, N_tets]`` The determinant of the Jacobian matrix for the coordinate transformation, 
             at the collocation nodes. 
         sJ:(numpy.ndarray): ``[4*Nfp, N_tets]`` The determinant of the surface Jacobian matrix at each of the
-                    collocation nodes, for each of the 4 faces of the ``N_tets`` elements. 
+            collocation nodes, for each of the 4 faces of the ``N_tets`` elements. 
+        Fscale:(numpy.ndarray): ``[4*Nfp, N_tets]`` ratio of surface to volume Jacobian of facial node 
+            = self.sJ / self.J [self.Fmask.reshape(-1), :], to be element-wise multiplied with fluxes
         lift (numpy.ndarray): ``[Np, 4*Nfp]`` an array containing the product of inverse of the mass matrix (3D) with the face-mass matrices (2D).
         M (numpy.ndarray): the reference element mass matrix :math:`M := V^{-t}V^{-1}`.
             mesh (edg_acoustics.Mesh): the mesh object containing the mesh information for the domain discretisation.
@@ -107,13 +109,13 @@ class AcousticsSimulation:
             mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates, ``xyz[2]``
             contains the z-coordinates.
         n_xyz (numpy.ndarray): ``[3, 4*Np, N_tets]`` the outwards normals :math:`\\vec{n}` at each collocation
-                    point on the element faces. Specifically:
-                    n_xyz[0, :] (numpy.ndarray): nx ``[4*Nfp, N_tets]`` The :math:`x`-component of the outward normal :math:`\\vec{n}`
-                        at each of the ``Nfp`` nodes on each of the 4 facets of each of the ``N_tets`` elements.
-                    n_xyz[1, :] (numpy.ndarray): ny ``[4*Nfp, N_tets]`` The :math:`y`-component of the outward normal :math:`\\vec{n}`
-                        at each of the ``Nfp`` nodes on each of the 4 facets of each of the ``N_tets`` elements.
-                    n_xyz[2, :] (numpy.ndarray): nz ``[4*Nfp, N_tets]`` The :math:`z`-component of the outward normal :math:`\\vec{n}`
-                        at each of the ``Nfp`` nodes on each of the 4 facets of each of the ``N_tets`` elements.
+            point on the element faces. Specifically:
+                n_xyz[0, :] (numpy.ndarray): nx ``[4*Nfp, N_tets]`` The :math:`x`-component of the outward normal :math:`\\vec{n}`
+                    at each of the ``Nfp`` nodes on each of the 4 facets of each of the ``N_tets`` elements.
+                n_xyz[1, :] (numpy.ndarray): ny ``[4*Nfp, N_tets]`` The :math:`y`-component of the outward normal :math:`\\vec{n}`
+                    at each of the ``Nfp`` nodes on each of the 4 facets of each of the ``N_tets`` elements.
+                n_xyz[2, :] (numpy.ndarray): nz ``[4*Nfp, N_tets]`` The :math:`z`-component of the outward normal :math:`\\vec{n}`
+                    at each of the ``Nfp`` nodes on each of the 4 facets of each of the ``N_tets`` elements.
         vmapM (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for interior values
         vmapP (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for exterior values
 
@@ -204,9 +206,20 @@ class AcousticsSimulation:
         # Compute the face normals at the collocation points and the surface Jacobians
         self.n_xyz, self.sJ = self.__normals_3d(self.xyz, self.rst_xyz, self.J, self.Fmask)
 
+        # Compute ratio of surface to volume Jacobian of facial node
+        self.Fscale = self.sJ / self.J [self.Fmask.reshape(-1), :]
+
+        # Find connectivity for nodes given per surface in all elements
         self.vmapM, self.vmapP = self.__build_maps_3d(self.xyz, self.mesh.EToE, self.mesh.EToF, self.Fmask, self.node_tolerance)
 
-        print(self.vmapM)
+        # Build specialized nodal maps for various types of boundary conditions,specified in BC_list
+        self.BCnode = self.__build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
+        # for BC_label in self.BC_list:
+            
+
+
+
+        # print(self.vmapM)
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
     def __compute_Np(Nx: int):
@@ -560,24 +573,24 @@ class AcousticsSimulation:
                 rst_xyz (numpy.ndarray): ``[3, 3, Np, N_tets]`` The derivative of the local coordinates :math:`R = (r, s, t)` with 
                     respect to the physical coordinates :math:`X = (x, y, z)`, i.e., :math:`\\frac{\\partial R}{\\partial X}`, 
                     at the collocation nodes. Specifically:
-                    rst_xyz[0, 0]: rx ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial r}{\\partial x}`, at the collocation nodes.
-                    rst_xyz[1, 0]: sx (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial s}{\\partial x}`, at the collocation nodes.
-                    rst_xyz[2, 0]: tx (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial t}{\\partial x}`, at the collocation nodes.
-                    rst_xyz[0, 1]: ry (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial r}{\\partial y}`, at the collocation nodes.
-                    rst_xyz[1, 1]: sy (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial s}{\\partial y}`, at the collocation nodes.
-                    rst_xyz[2, 1]: ty (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial t}{\\partial y}`, at the collocation nodes.
-                    rst_xyz[0, 2]: rz (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial r}{\\partial z}`, at the collocation nodes.
-                    rst_xyz[1, 2]: sz (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial s}{\\partial z}`, at the collocation nodes.
-                    rst_xyz[2, 2]: tz (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial t}{\\partial z}`, at the collocation nodes.
+                        rst_xyz[0, 0]: rx ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
+                            coordinates :math:`x`, i.e., :math:`\\frac{\\partial r}{\\partial x}`, at the collocation nodes.                      
+                        rst_xyz[1, 0]: sx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
+                            coordinates :math:`x`, i.e., :math:`\\frac{\\partial s}{\\partial x}`, at the collocation nodes.
+                        rst_xyz[2, 0]: tx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
+                            coordinates :math:`x`, i.e., :math:`\\frac{\\partial t}{\\partial x}`, at the collocation nodes.
+                        rst_xyz[0, 1]: ry (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
+                            coordinates :math:`y`, i.e., :math:`\\frac{\\partial r}{\\partial y}`, at the collocation nodes.
+                        rst_xyz[1, 1]: sy (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
+                            coordinates :math:`y`, i.e., :math:`\\frac{\\partial s}{\\partial y}`, at the collocation nodes.
+                        rst_xyz[2, 1]: ty (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
+                            coordinates :math:`y`, i.e., :math:`\\frac{\\partial t}{\\partial y}`, at the collocation nodes.
+                        rst_xyz[0, 2]: rz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
+                            coordinates :math:`z`, i.e., :math:`\\frac{\\partial r}{\\partial z}`, at the collocation nodes.
+                        rst_xyz[1, 2]: sz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
+                            coordinates :math:`z`, i.e., :math:`\\frac{\\partial s}{\\partial z}`, at the collocation nodes.
+                        rst_xyz[2, 2]: tz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
+                            coordinates :math:`z`, i.e., :math:`\\frac{\\partial t}{\\partial z}`, at the collocation nodes.
                 J (numpy.ndarray): ``[Np, N_tets]`` The determinant of the Jacobian matrix for the coordinate transformation, 
                     at the collocation nodes. 
         """
@@ -630,26 +643,26 @@ class AcousticsSimulation:
             rst_xyz (numpy.ndarray): ``[3, 3, Np, N_tets]`` The derivative of the local coordinates :math:`R = (r, s, t)` with 
                 respect to the physical coordinates :math:`X = (x, y, z)`, i.e., :math:`\\frac{\\partial R}{\\partial X}`, 
                 at the collocation nodes. Specifically:
-                rst_xyz[0, 0]: rx ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                    coordinates :math:`x`, i.e., :math:`\\frac{\\partial r}{\\partial x}`, at the collocation nodes.
-                rst_xyz[1, 0]: sx (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                    coordinates :math:`x`, i.e., :math:`\\frac{\\partial s}{\\partial x}`, at the collocation nodes.
-                rst_xyz[2, 0]: tx (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                    coordinates :math:`x`, i.e., :math:`\\frac{\\partial t}{\\partial x}`, at the collocation nodes.
-                rst_xyz[0, 1]: ry (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                    coordinates :math:`y`, i.e., :math:`\\frac{\\partial r}{\\partial y}`, at the collocation nodes.
-                rst_xyz[1, 1]: sy (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                    coordinates :math:`y`, i.e., :math:`\\frac{\\partial s}{\\partial y}`, at the collocation nodes.
-                rst_xyz[2, 1]: ty (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                    coordinates :math:`y`, i.e., :math:`\\frac{\\partial t}{\\partial y}`, at the collocation nodes.
-                rst_xyz[0, 2]: rz (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                    coordinates :math:`z`, i.e., :math:`\\frac{\\partial r}{\\partial z}`, at the collocation nodes.
-                rst_xyz[1, 2]: sz (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                    coordinates :math:`z`, i.e., :math:`\\frac{\\partial s}{\\partial z}`, at the collocation nodes.
-                rst_xyz[2, 2]: tz (numpy.ndarray): `[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                    coordinates :math:`z`, i.e., :math:`\\frac{\\partial t}{\\partial z}`, at the collocation nodes.
+                    rst_xyz[0, 0]: rx ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
+                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial r}{\\partial x}`, at the collocation nodes.
+                    rst_xyz[1, 0]: sx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
+                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial s}{\\partial x}`, at the collocation nodes.
+                    rst_xyz[2, 0]: tx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
+                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial t}{\\partial x}`, at the collocation nodes.
+                    rst_xyz[0, 1]: ry (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
+                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial r}{\\partial y}`, at the collocation nodes.
+                    rst_xyz[1, 1]: sy (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
+                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial s}{\\partial y}`, at the collocation nodes.
+                    rst_xyz[2, 1]: ty (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
+                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial t}{\\partial y}`, at the collocation nodes.
+                    rst_xyz[0, 2]: rz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
+                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial r}{\\partial z}`, at the collocation nodes.
+                    rst_xyz[1, 2]: sz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
+                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial s}{\\partial z}`, at the collocation nodes.
+                    rst_xyz[2, 2]: tz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
+                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial t}{\\partial z}`, at the collocation nodes.
             J (numpy.ndarray): ``[Np, N_tets]`` The determinant of the Jacobian matrix for the coordinate transformation, 
-                    at the collocation nodes. 
+                at the collocation nodes. 
             Fmask (numpy.ndarray): ``[4, Nfp]`` an array containing local indices of nodes for each of the four faces of the
                 reference element.
 
@@ -673,7 +686,7 @@ class AcousticsSimulation:
 
         # Extract the transformation derivatives over the faces
         # the structure is the same as for rst_xyz
-        frst_xyz = rst_xyz[:, :, Fmask.flatten(), :]   
+        frst_xyz = rst_xyz[:, :, Fmask.reshape(-1), :]   
 
         # Construct the normals 
         n_xyz = numpy.zeros([3, 4*Nfp, N_tets])  # allocate memory space 
@@ -708,7 +721,7 @@ class AcousticsSimulation:
         n_xyz = n_xyz / norm_n  # this does broadcasting over all the 3 direction x, y, z
         
         # Compute the face Jacobians
-        sJ = norm_n * J[Fmask.flatten()]
+        sJ = norm_n * J[Fmask.reshape(-1)]
 
         return n_xyz, sJ
     
@@ -721,19 +734,19 @@ class AcousticsSimulation:
             xyz (numpy.ndarray): ``[3, Np, N_tets]`` the physical space coordinates :math:`(x, y, z)` of the collocation points of each element of the\
             mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates, ``xyz[2]`` contains the z-coordinates.
             EToE (numpy.ndarray): an ``[4, N_tets]`` array containing the information of which elements are neighbors of
-            an element, i.e., EToE[j, i] returns the index of the jth neighbor of element i. The definition of jth
-            neighbor follows the mesh generator's convention.
+                an element, i.e., EToE[j, i] returns the index of the jth neighbor of element i. The definition of jth
+                neighbor follows the mesh generator's convention.
             EToF (numpy.ndarray): an ``[4, N_tets]`` array containing the information of which face is shared between the
-            element and its neighbor,  i.e.,  EToF[j, i] returns the face index of the jth neighbor of element i. 
-            Face indices follow the same convention as neighbor indices.
+                element and its neighbor,  i.e.,  EToF[j, i] returns the face index of the jth neighbor of element i. 
+                Face indices follow the same convention as neighbor indices.
             Fmask (numpy.ndarray): ``[4, Nfp]`` an array containing the local indices of the ``Nfp`` nodes on each of the four faces of 
                 the reference element.
             node_tol (float): the tolerance used to determine if a node lies on a facet.
 
         Returns:
             (tuple): tuple containing:
-                vmapM (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for interior values
-                vmapP (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for exterior values
+                vmapM (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for interior values.
+                vmapP (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for exterior values.
         """
 
         N_tets = xyz.shape[2]  # number of elements
@@ -782,24 +795,96 @@ class AcousticsSimulation:
 
                 vmapP[ke,face,idM]=vmapM[ke2,face2,idP]
 
-        vmapM=numpy.swapaxes(vmapM,0,2)  #to make shape ([Nfp,4, N_tets ])
-        vmapM=numpy.swapaxes(vmapM,0,1)  #to make shape ([4,Nfp, N_tets ])
+        vmapM=numpy.swapaxes(vmapM, 0, 2)  #to make shape ([Nfp,4, N_tets ])
+        vmapM=numpy.swapaxes(vmapM, 0, 1)  #to make shape ([4,Nfp, N_tets ])
 
-        vmapP=numpy.swapaxes(vmapP,0,2)
-        vmapP=numpy.swapaxes(vmapP,0,1)
-
-
-        # print(vmapM)
+        vmapP=numpy.swapaxes(vmapP, 0, 2)
+        vmapP=numpy.swapaxes(vmapP, 0, 1)
 
         return vmapM.reshape(-1), vmapP.reshape(-1)
-                ## below are Fortran order, exactly copy of MATLAB
-        # nodeids=numpy.arange(N_tets*Np, dtype=numpy.uint64).reshape(Np, N_tets)
-        # vmapM=numpy.zeros([Nfp, 4, N_tets], dtype=numpy.uint64)
-        # vmapP=numpy.zeros([Nfp, 4, N_tets], dtype=numpy.uint64)
+    
+    @staticmethod
+    # ismember_col function, which cols of a are in b:
+    def __ismember_col(a: numpy.ndarray, b: numpy.ndarray):
+        _, rev = numpy.unique(numpy.concatenate((a,b),axis=1),axis=1,return_inverse=True) # The indices to reconstruct the original array from the unique array
+        # Split the index
+        b_rev = rev[a.shape[1]:]
+        a_rev = rev[:a.shape[1]]
+        # Return the result:
+        return numpy.isin(a_rev,b_rev)
 
-        # for ke in range(N_tets):
-        #     for face in range(4):
-        #         vmapM[:, face, ke]=nodeids[Fmask[face], ke]
+    @staticmethod
+    def __build_BCmaps_3d(BC_list: dict[str, int], EToV: numpy.ndarray, vmapM: numpy.ndarray, BC_triangles: dict[str, numpy.ndarray], Nx: int):
+        """Build specialized nodal maps for various types of boundary conditions,specified in BC_list
+
+
+        Args:
+            BC_list (dict[str, edg_acoustics.BCCondition]): a dictionary containing the definition of the boundary
+                conditions that are present in the mesh. BC_list.keys() must contain the same elements as
+                mesh.BC_triangles.keys(), i.e., all boundary conditions in the mesh must have an associated boundary condition
+                definition.
+            EToV (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets 
+                tetrahedra that make up the mesh.
+            vmapM (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for interior values.
+            BC_triangles (dict[str, numpy.ndarray]): a dictionary containing the list of triangles that have a certain
+                boundary condition. BC_triangles['BC_label'] is a numpy.array with the nodes of each triangle where
+                boundary condition of type 'BC_label' is to be implemented. The nodes defining each triangle in the
+                numpy.array are stored per row.
+
+        Returns:
+            BCnode (list): List of boundary map nodes. 
+        """
+        Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
+        N_tets = EToV.shape[1]
+        BCType=numpy.zeros([4, N_tets], dtype=numpy.uint8)
+        VNUM = numpy.array([[1, 2, 3],[1, 2, 4], [2, 3, 4], [1, 3, 4]])-1
+        BCnode=[]
+        # for i in range(len(BC_list)):
+        for BCname, BClabel in BC_list.items():
+            BCnode.append({'labelname': BClabel})
+            # tri=BC_triangles[BCname].sort(axis=1)
+            tri=numpy.sort(BC_triangles[BCname], axis=1).T
+            for indexl in range(4):
+                Face = numpy.sort(EToV[VNUM[indexl]], axis=0)
+                K_ =AcousticsSimulation.__ismember_col(Face, tri)
+                # K_ = numpy.all(numpy.isin(Face, tri), axis=0) #wont work for all cases
+                BCType[indexl, K_] = BClabel
+        BCType=BCType.repeat(Nfp,axis=0)
+        # numpy.repeat(BCType,Nfp,axis=0)
+        for i in range(len(BC_list)):
+            BCnode[i]['map']=numpy.nonzero(BCType.reshape(-1)==BCnode[i]['labelname'])
+            # BCType.reshape(-1) first sweep through K, which is consistent with Nx.reshape(-1) and vmapM
+            BCnode[i]['vmap']=vmapM[BCnode[i]['map']]
+            # abc=numpy.sort(BCnode[0]['vmap']) # to compare against MATLAB
+
+
+
+            
+
+#       for BC_label in BC_labels:
+#             triangles_have_label = (mesh_data.cell_data_dict['gmsh:physical']['triangle'] == BC_labels[BC_label])  # array with bools specifying if triangle has BC_label or not
+#             self.N_BC_triangles[BC_label] = triangles_have_label.sum()
+
+
+        return BCnode
+
+        # for BC_label in self.BC_list:
+
+# ## BuildBCMaps
+# BCtype=numpy.zeros([4, N_tets], dtype=numpy.uint64)
+# # Assuming you have a matrix A of size (4, K) and Nfp is defined
+# Nfp = 3  # Adjust this to your desired value
+
+# BCtype.repeat(Nfp,axis=0)
+# # Create a broadcastable value (a vector of length Nfp)
+# value_to_broadcast = np.array([1.0] * Nfp)
+
+# # Expand the dimensions of the value to match the shape of A
+# value_to_broadcast = value_to_broadcast[:, np.newaxis]
+
+# # Use broadcasting to replicate the value across dimension 0 of A
+# result = A * value_to_broadcast
+
 
 
     # Properties -------------------------------------------------------------------------------------------------------
