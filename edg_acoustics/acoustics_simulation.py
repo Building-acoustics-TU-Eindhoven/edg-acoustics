@@ -754,21 +754,20 @@ class AcousticsSimulation:
         Nx = AcousticsSimulation.__compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
         Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
 
-        nodeids=numpy.arange(N_tets*Np, dtype=numpy.uint64).reshape(N_tets, Np)
-        vmapM=numpy.zeros([N_tets, 4, Nfp], dtype=numpy.uint64)
-        vmapP=numpy.zeros([N_tets, 4, Nfp], dtype=numpy.uint64)
+        nodeids=numpy.arange(N_tets*Np, dtype=numpy.uint64).reshape(Np, N_tets)
+        vmapM=numpy.zeros([4, Nfp, N_tets], dtype=numpy.uint64)
+        vmapP=numpy.zeros([4, Nfp, N_tets], dtype=numpy.uint64)
         # tmp=numpy.ones([1, Nfp], dtype=numpy.uint8)
         tmp=numpy.ones(Nfp, dtype=numpy.uint8)
         D=numpy.zeros([Nfp, Nfp])
 
-        xV=xyz[0].reshape(-1, order='F')  # viewing, get x in a 1D column-wise form
-        yV=xyz[1].reshape(-1, order='F')
-        zV=xyz[2].reshape(-1, order='F')
+        xV=xyz[0].reshape(-1)  # viewing, get x in a 1D row-wise form, consistent with 
+        yV=xyz[1].reshape(-1)
+        zV=xyz[2].reshape(-1)
 
         for ke in range(N_tets):
             for face in range(4):
-                vmapM[ke, face, :]=nodeids[ke, Fmask[face]] #find index of face nodes with respect to volume node ordering
-
+                vmapM[face, :, ke]=nodeids[Fmask[face],ke] #find index of face nodes with respect to volume node ordering
 
         for ke in range(N_tets):
             for face in range(4):
@@ -777,8 +776,8 @@ class AcousticsSimulation:
                 face2=EToF[face, ke]
 
                 # find find volume node numbers of left and right nodes 
-                vidM=vmapM[ke, face, :]
-                vidP=vmapM[ke2, face2, :]
+                vidM=vmapM[face, :, ke]
+                vidP=vmapM[face2, :, ke2]
 
                 # xM=numpy.outer(xyz[0].ravel(order='F')[vidM],tmp)  # returns a copy
                 xM=numpy.outer(xV[vidM],tmp)  # viewing
@@ -793,13 +792,7 @@ class AcousticsSimulation:
 
                 (idM,idP)=numpy.nonzero(numpy.abs(D) < node_tol)
 
-                vmapP[ke,face,idM]=vmapM[ke2,face2,idP]
-
-        vmapM=numpy.swapaxes(vmapM, 0, 2)  #to make shape ([Nfp,4, N_tets ])
-        vmapM=numpy.swapaxes(vmapM, 0, 1)  #to make shape ([4,Nfp, N_tets ])
-
-        vmapP=numpy.swapaxes(vmapP, 0, 2)
-        vmapP=numpy.swapaxes(vmapP, 0, 1)
+                vmapP[face,idM, ke]=vmapM[face2,idP, ke2]
 
         return vmapM.reshape(-1), vmapP.reshape(-1)
     
@@ -839,7 +832,6 @@ class AcousticsSimulation:
         BCType=numpy.zeros([4, N_tets], dtype=numpy.uint8)
         VNUM = numpy.array([[1, 2, 3],[1, 2, 4], [2, 3, 4], [1, 3, 4]])-1
         BCnode=[]
-        # for i in range(len(BC_list)):
         for BCname, BClabel in BC_list.items():
             BCnode.append({'labelname': BClabel})
             # tri=BC_triangles[BCname].sort(axis=1)
@@ -850,40 +842,14 @@ class AcousticsSimulation:
                 # K_ = numpy.all(numpy.isin(Face, tri), axis=0) #wont work for all cases
                 BCType[indexl, K_] = BClabel
         BCType=BCType.repeat(Nfp,axis=0)
-        # numpy.repeat(BCType,Nfp,axis=0)
+
         for i in range(len(BC_list)):
-            BCnode[i]['map']=numpy.nonzero(BCType.reshape(-1)==BCnode[i]['labelname'])
-            # BCType.reshape(-1) first sweep through K, which is consistent with Nx.reshape(-1) and vmapM
+            BCnode[i]['map']=numpy.nonzero(BCType.reshape(-1)==BCnode[i]['labelname'])[0]
+            # BCType.reshape(-1) and resulting 'map' first sweep through K, which is consistent with Nx.reshape(-1) and vmapM
             BCnode[i]['vmap']=vmapM[BCnode[i]['map']]
-            # abc=numpy.sort(BCnode[0]['vmap']) # to compare against MATLAB
-
-
-
-            
-
-#       for BC_label in BC_labels:
-#             triangles_have_label = (mesh_data.cell_data_dict['gmsh:physical']['triangle'] == BC_labels[BC_label])  # array with bools specifying if triangle has BC_label or not
-#             self.N_BC_triangles[BC_label] = triangles_have_label.sum()
-
 
         return BCnode
 
-        # for BC_label in self.BC_list:
-
-# ## BuildBCMaps
-# BCtype=numpy.zeros([4, N_tets], dtype=numpy.uint64)
-# # Assuming you have a matrix A of size (4, K) and Nfp is defined
-# Nfp = 3  # Adjust this to your desired value
-
-# BCtype.repeat(Nfp,axis=0)
-# # Create a broadcastable value (a vector of length Nfp)
-# value_to_broadcast = np.array([1.0] * Nfp)
-
-# # Expand the dimensions of the value to match the shape of A
-# value_to_broadcast = value_to_broadcast[:, np.newaxis]
-
-# # Use broadcasting to replicate the value across dimension 0 of A
-# result = A * value_to_broadcast
 
 
 
