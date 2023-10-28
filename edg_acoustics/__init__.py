@@ -2,6 +2,7 @@
 import logging
 from .acoustics_simulation import AcousticsSimulation
 from .mesh import Mesh
+from .boundary_condition import BoundaryCondition
 
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())

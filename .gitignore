@@ -33,3 +33,4 @@ venv3
 #test file
 test_code/test_python.py
 test_code/test_meshio
+tests/dev_tests/*

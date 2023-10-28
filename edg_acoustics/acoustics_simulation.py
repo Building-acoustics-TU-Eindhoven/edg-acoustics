@@ -29,7 +29,7 @@ NODETOL = 1.0e-7  # tolerance used to define if a node lies in a facet of the me
 class AcousticsSimulation:
     """Acoustics simulation data structure for running a DG acoustics simulation.
 
-    :class:`.AcousticsSimulation`contains the domain discretization and sets up the DG finite element discretisation
+    :class:`.AcousticsSimulation` contains the domain discretization and sets up the DG finite element discretisation
     for the solution to the acoustic wave propagation.
 
     Args:
@@ -37,7 +37,7 @@ class AcousticsSimulation:
             propagation problem.
         Nt (int): the order of the time integration scheme.
         mesh (edg_acoustics.Mesh): the mesh object containing the mesh information for the domain discretisation.
-        BC_list (dict[str, edg_acoustics.BCCondition]): a dictionary containing the definition of the boundary
+        BC_list (dict[str, int]): a dictionary containing the definition of the boundary
             conditions that are present in the mesh. BC_list.keys() must contain the same elements as
             mesh.BC_triangles.keys(), i.e., all boundary conditions in the mesh must have an associated boundary condition
             definition.
@@ -49,7 +49,7 @@ class AcousticsSimulation:
             is present in the mesh but not in BC_list, an error is raised.
 
     Attributes:
-        BC_list (dict[str, edg_acoustics.BCCondition]): a dictionary containing the definition of the boundary
+        BC_list (dict[str, int]): a dictionary containing the definition of the boundary
             conditions that are present in the mesh. BC_list.keys() must contain the same elements as
             mesh.BC_triangles.keys(), i.e., all boundary conditions in the mesh must have an associated boundary condition
             definition.
@@ -159,11 +159,11 @@ class AcousticsSimulation:
         """Compute local system matrices and local variables.
 
         Compute quantities associated to reference element and local coordinates, namely:
-        - Reference element collocation nodes
-        - Element collocation nodes (transformation of reference element to each element)
-        - Reference element van der Monde matrix
-        - Reference element mass matrix
-        - Reference element derivative matrices
+            - Reference element collocation nodes
+            - Element collocation nodes (transformation of reference element to each element)
+            - Reference element van der Monde matrix
+            - Reference element mass matrix
+            - Reference element derivative matrices
 
         Updates:
             - self.xyz
@@ -214,10 +214,7 @@ class AcousticsSimulation:
 
         # Build specialized nodal maps for various types of boundary conditions,specified in BC_list
         self.BCnode = self.__build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
-        # for BC_label in self.BC_list:
             
-
-
 
         # print(self.vmapM)
     # Static methods ---------------------------------------------------------------------------------------------------
@@ -277,7 +274,7 @@ class AcousticsSimulation:
 
         Args:
             mesh (edg_acoustics.Mesh): the mesh object containing the mesh information for the domain discretisation.
-            BC_list (dict[str, edg_acoustics.BCCondition]): a dictionary containing the definition of the boundary
+            BC_list (dict[str, int]): a dictionary containing the definition of the boundary
                 conditions that are present in the mesh. BC_list.keys() must contain the same elements as
                 mesh.BC_triangles.keys(), i.e., all boundary conditions in the mesh must have an associated boundary condition
                 definition.
@@ -812,7 +809,7 @@ class AcousticsSimulation:
 
 
         Args:
-            BC_list (dict[str, edg_acoustics.BCCondition]): a dictionary containing the definition of the boundary
+            BC_list (dict[str, int]): a dictionary containing the definition of the boundary
                 conditions that are present in the mesh. BC_list.keys() must contain the same elements as
                 mesh.BC_triangles.keys(), i.e., all boundary conditions in the mesh must have an associated boundary condition
                 definition.
@@ -825,7 +822,8 @@ class AcousticsSimulation:
                 numpy.array are stored per row.
 
         Returns:
-            BCnode (list): List of boundary map nodes. 
+            BCnode (list[dict]): List of boundary map nodes, each element being a dictionary 
+                with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)]. 
         """
         Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
         N_tets = EToV.shape[1]
@@ -833,7 +831,7 @@ class AcousticsSimulation:
         VNUM = numpy.array([[1, 2, 3],[1, 2, 4], [2, 3, 4], [1, 3, 4]])-1
         BCnode=[]
         for BCname, BClabel in BC_list.items():
-            BCnode.append({'labelname': BClabel})
+            BCnode.append({'label': BClabel})
             # tri=BC_triangles[BCname].sort(axis=1)
             tri=numpy.sort(BC_triangles[BCname], axis=1).T
             for indexl in range(4):
@@ -844,7 +842,7 @@ class AcousticsSimulation:
         BCType=BCType.repeat(Nfp,axis=0)
 
         for i in range(len(BC_list)):
-            BCnode[i]['map']=numpy.nonzero(BCType.reshape(-1)==BCnode[i]['labelname'])[0]
+            BCnode[i]['map']=numpy.nonzero(BCType.reshape(-1)==BCnode[i]['label'])[0]
             # BCType.reshape(-1) and resulting 'map' first sweep through K, which is consistent with Nx.reshape(-1) and vmapM
             BCnode[i]['vmap']=vmapM[BCnode[i]['map']]
 
