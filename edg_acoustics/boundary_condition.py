@@ -28,11 +28,11 @@ FREQ_MAX = 2e3  # maximum resolvable frequency
 class BoundaryCondition:
     """Setup boundary condition of a DG acoustics simulation for a specific scenario.
 
-    :class:`.BoundaryCondition` is used to 
-    load the boundary condition parameters, determine the time step size.
+    :class:`.BoundaryCondition` is used to load the boundary condition parameters, determine the time step size.
 
     Args:
-        acoustics_simulation (edg_acoustics.AcousticsSimulation): the simulation object containing the spatial discretisation.
+        BCnode (list[dict]): List of boundary map nodes, each element being a dictionary with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)]. 
+            From the edg_acoustics.AcousticsSimulation class that contains the spatial discretisation.
         BCpara (list [dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary 
             with keys (values) ['label'(int),'RI'(float),'RP'(numpy.ndarray),'CP'(numpy.ndarray)]. 
             'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\inf`. 
@@ -45,17 +45,18 @@ class BoundaryCondition:
         freq_max (float): maximum resolvable frequency of the simulation. <default>: edg_acoustics.FREQ_MAX
 
     Raises:
-        ValueError: If BCpara.keys() is not present in the acoustics_simulation.BC_list.values(), an error is raised. 
-            If a label is present in the acoustics_simulation.BC_list.values() but not in BCpara, an error is raised.
+        ValueError: If BCpara.keys() is not present in the acoustics_simulation.BCnode.[index]['label'], an error is raised. 
+            If a label is present in the acoustics_simulation.BCnode.[index]['label'] but not in BCpara, an error is raised.
 
     Attributes:
-        BC_triangles (dict[str, numpy.ndarray]): a dictionary containing the list of triangles that have a certain
-            boundary condition. self.BC_triangles['BC_label'] is a numpy.array with the nodes of each triangle where
-            boundary condition of type 'BC_label' is to be implemented. The nodes defining each triangle in the
-            numpy.array are stored per row.
-        EToE (numpy.ndarray): an (4, N_tets) array containing the information of which elements are neighbors of
-            an element, i.e., EToE[j, i] returns the index of the jth neighbor of element i. The definition of jth
-            neighbor follows the mesh generator's convention.
+        BCpara (list [dict]): a list of boundary conditon parameters read from the user input. 
+        BCvar (list [dict]): a list of ADE variables. Each element corresponds to one type of BC, and is a dictionary 
+                with potential keys ['label', 'vn', 'ou', 'in', 'phi', 'PHI', 'kexi1', 'kexi2', 'KEXI1', 'KEXI2']. 
+                More details about the multi-pole model parameters and boundary condition can be found in reference https://doi.org/10.1121/10.0001128.
+                All values are stored rowwise in the numpy.array BCpara[BC_label], with :math:`\\zeta_i` occupying the first row.
+                is stored in the first row and last column.
+                BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
+                i.e., all boundary conditions in the simulation must have an associated boundary condition parameters. 
 
 
 
@@ -65,13 +66,13 @@ class BoundaryCondition:
 
     """
 
-    def __init__(self, acoustics_simulation: edg_acoustics.AcousticsSimulation, BCpara: list[dict], freq_max: float=FREQ_MAX):
+    def __init__(self, BCnode: list[dict], BCpara: list[dict], freq_max: float=FREQ_MAX):
         # Check if BCpara is compatible with AcousticsSimulation.BCnode and satisfies physical admissibility condition.
-        self.__check_BCpara(self, acoustics_simulation.BCnode, BCpara, freq_max)
+        self.__check_BCpara(self, BCnode, BCpara, freq_max)
 
         # Store input parameters
         self.BCpara = BCpara
-        self.BCvar=self.__init_ADEvariables(self, self.BCpara, acoustics_simulation.BCnode)
+        self.BCvar=self.__init_ADEvariables(self, self.BCpara, BCnode)
 
 
 
@@ -80,9 +81,9 @@ class BoundaryCondition:
     def __check_BCpara(self, BCnode: list[dict], BCpara: list[dict], freq_max: float):
         """Check if BCpara is compatible with AcousticsSimulation.BCnode and satisfies physical admissibility condition.
 
-        Given an acoustics simulation data structure with a set of boundary conditions specified in acoustics_simulation.BC_list, 
+        Given an acoustics simulation data structure with a set of boundary conditions specified in acoustics_simulation.BCnode, 
         check if the list of boundary conditions specification and parameters are compatible. 
-        By compatible we mean that all boundary conditions (keys) in BCpara exist in acoustics_simulation.BC_list, and vice-versa.
+        By compatible we mean that all boundary conditions (keys) in BCpara exist in acoustics_simulation.BCnode, and vice-versa.
         Also, to satisfy the causality and reality conditions, multi-pole model parameters :math:`\\zeta_i` (stored in first row of 
         numpy.array BCpara[BC_label] need to be positive.
         To satisfy the passivity condition, the magnitude of the reflection coefficient from the multi-pole model need to be smaller than 1,
