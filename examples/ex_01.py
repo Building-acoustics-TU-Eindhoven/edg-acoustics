@@ -22,6 +22,7 @@ BC_para = [
             {'label': 13, 'RI': 0, 'RP': numpy.array([[2.849308439512733e+03],[2.843988875912554e+03]])},
             {'label': 14, 'RI': 0, 'RP': numpy.array([[1.505778842079319e+04],[1.509502512409186e+04]])}
             ]
+
 # Mesh
 mesh_name = 'coarse_cube_room.msh'
 mesh_data_folder = os.path.abspath(os.path.join(os.path.split(os.path.abspath(__file__))[0], os.path.pardir, 'data', 'tests', 'mesh'))
@@ -37,9 +38,12 @@ Nt = 3  # in time
 
 sim = edg_acoustics.AcousticsSimulation(Nx, Nt, mesh, BC_labels)
 sim.init_local_system()
-bc = edg_acoustics.BoundaryCondition(sim, BC_para)
-# sim.init_IC(user_property)
-# BC_para=
+# bc = edg_acoustics.BoundaryCondition(sim.BCnode, BC_para)
+
+sim.init_BC(BC_para)
+# sim.init_IC(source_xyz, halfwidth)
+# sim.IC.set_frequency
+
 # setup=edg_acoustics.setup_(sim,BC_para)
 # simulation=edg_acoustics.time_
 
