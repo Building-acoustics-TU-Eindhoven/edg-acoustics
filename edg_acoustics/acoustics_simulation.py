@@ -154,6 +154,8 @@ class AcousticsSimulation:
         self.Dt = None
         self.Fmask = None
         self.lift = None
+        # dtype_input: str ='float64'
+        # self.dtype_dict={'float64': numpy.float64, 'float32': numpy.float32}
 
     def init_local_system(self):
         """Compute local system matrices and local variables.
@@ -215,8 +217,32 @@ class AcousticsSimulation:
         # Build specialized nodal maps for various types of boundary conditions,specified in BC_list
         self.BCnode = self.__build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
             
+    def init_IC(self, source_xyz: float, halfwidth: float):
+        """setup the initial condition.
 
-        # print(self.vmapM)
+        
+        Args:
+
+        Returns:
+        """
+        self.IC = edg_acoustics.InitialCondition(self.xyz, source_xyz, halfwidth)
+        # self.IC.__set_source_location(source_xyz)
+        # self.IC.__set_frequency(halfwidth) 
+        
+        # self.IC.__monopole(self.xyz, source_xyz, halfwidth) 
+
+        # self.initial_condition_field=self.IC.compute_field() #values at nodes, 
+
+    def init_BC(self, BC_para: list[dict]):
+        """setup the boundary condition.
+
+        
+        Args:
+
+        Returns:
+        """
+        self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
+
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
     def __compute_Np(Nx: int):
@@ -490,12 +516,12 @@ class AcousticsSimulation:
         Nx = AcousticsSimulation.__compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
         Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # get the number of collocation points per face
 
-        Fmask=numpy.zeros([4, Nfp], dtype=numpy.uint8)
+        Fmask=numpy.zeros([4, Nfp],  dtype=numpy.uint8)
 
         # Find all the nodes that lie on each surface
         Fmask[0] = numpy.flatnonzero(numpy.abs(1+rst[2]) < node_tol)
         Fmask[1] = numpy.flatnonzero(numpy.abs(1+rst[1]) < node_tol)
-        Fmask[2] = numpy.flatnonzero(numpy.abs(1+rst.sum(axis=0)) < node_tol)
+        Fmask[2] = numpy.flatnonzero(numpy.abs(1+rst.sum(axis = 0 )) < node_tol)
         Fmask[3] = numpy.flatnonzero(numpy.abs(1+rst[0]) < node_tol)
 
         return Fmask
