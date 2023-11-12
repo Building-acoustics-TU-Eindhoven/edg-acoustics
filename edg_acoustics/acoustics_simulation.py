@@ -127,7 +127,7 @@ class AcousticsSimulation:
   
     def __init__(self, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int], node_tolerance: float = NODETOL):
         # Check if BC_list and mesh are compatible
-        if not self.__check_BC_list(BC_list, mesh):
+        if not AcousticsSimulation.__check_BC_list(BC_list, mesh):
             raise ValueError(
                 "[edg_acoustics.AcousticSimulation] All BC labels must be present in the mesh and all labels in the mesh must be "
                 "present in BC_list.")
@@ -180,42 +180,42 @@ class AcousticsSimulation:
         Returns:
         """
 
-        self.rst, self.xyz = self.__compute_collocation_nodes(
+        self.rst, self.xyz = AcousticsSimulation.__compute_collocation_nodes(
             self.mesh.EToV, self.mesh.vertices, self.Nx, dim=self.dim)
 
         # Compute the van der Monde matrix and its inverse
-        self.V = self.__compute_van_der_monde_matrix(self.Nx, self.rst)
+        self.V = AcousticsSimulation.__compute_van_der_monde_matrix(self.Nx, self.rst)
         self.inV = numpy.linalg.inv(self.V)
 
         # Compute the van der Monde matrix of the gradients
-        self.V3D = self.__compute_grad_van_der_monde_matrix(self.Nx, self.rst)
+        self.V3D = AcousticsSimulation.__compute_grad_van_der_monde_matrix(self.Nx, self.rst)
 
         # Compute mass matrix
-        self.M = self.__compute_mass_matrix(self.V)
+        self.M = AcousticsSimulation.__compute_mass_matrix(self.V)
 
         # Compute the derivative matrices
-        self.Dr, self.Ds, self.Dt = self.__compute_derivative_matrix(self.Nx, self.rst)
+        self.Dr, self.Ds, self.Dt = AcousticsSimulation.__compute_derivative_matrix(self.Nx, self.rst)
 
         # Find all the ``Nfp`` face nodes that lie on each surface.
-        self.Fmask=self.__compute_Fmask(self.rst, self.node_tolerance)
+        self.Fmask=AcousticsSimulation.__compute_Fmask(self.rst, self.node_tolerance)
 
         # Compute the product of inverse of the mass matrix (3D) with the face-mass matrices (2D)
-        self.lift=self.__compute_lift(self.V, self.rst, self.Fmask)
+        self.lift=AcousticsSimulation.__compute_lift(self.V, self.rst, self.Fmask)
 
         # Compute the metric terms for the mesh
-        self.rst_xyz, self.J = self.__geometric_factors_3d(self.xyz, self.Dr, self.Ds, self.Dt)
+        self.rst_xyz, self.J = AcousticsSimulation.__geometric_factors_3d(self.xyz, self.Dr, self.Ds, self.Dt)
 
         # Compute the face normals at the collocation points and the surface Jacobians
-        self.n_xyz, self.sJ = self.__normals_3d(self.xyz, self.rst_xyz, self.J, self.Fmask)
+        self.n_xyz, self.sJ = AcousticsSimulation.__normals_3d(self.xyz, self.rst_xyz, self.J, self.Fmask)
 
         # Compute ratio of surface to volume Jacobian of facial node
         self.Fscale = self.sJ / self.J [self.Fmask.reshape(-1), :]
 
         # Find connectivity for nodes given per surface in all elements
-        self.vmapM, self.vmapP = self.__build_maps_3d(self.xyz, self.mesh.EToE, self.mesh.EToF, self.Fmask, self.node_tolerance)
+        self.vmapM, self.vmapP = AcousticsSimulation.__build_maps_3d(self.xyz, self.mesh.EToE, self.mesh.EToF, self.Fmask, self.node_tolerance)
 
         # Build specialized nodal maps for various types of boundary conditions,specified in BC_list
-        self.BCnode = self.__build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
+        self.BCnode = AcousticsSimulation.__build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
             
     def init_IC(self, source_xyz: float, halfwidth: float):
         """setup the initial condition.
@@ -257,7 +257,8 @@ class AcousticsSimulation:
         """
         
         return int((Nx+1)*(Nx+2)*(Nx+3)/6)
-
+    
+    @staticmethod
     def __compute_Nfp(Nx: int):
         """Computes the number of collocation nodes lying on a face of the elements for basis of polynomial degree ``Nx``.
 
@@ -271,6 +272,7 @@ class AcousticsSimulation:
         
         return int((Nx+1)*(Nx+2)/2)
     
+    @staticmethod
     def __compute_Nx_from_Np(Np: int):
         """Computes the  polynomial degree ``Nx`` of basis from the number of collocation points.
 

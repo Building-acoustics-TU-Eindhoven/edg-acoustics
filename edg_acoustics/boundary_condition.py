@@ -68,11 +68,11 @@ class BoundaryCondition:
 
     def __init__(self, BCnode: list[dict], BCpara: list[dict], freq_max: float=FREQ_MAX):
         # Check if BCpara is compatible with AcousticsSimulation.BCnode and satisfies physical admissibility condition.
-        self.__check_BCpara(BCnode, BCpara, freq_max)
+        BoundaryCondition.__check_BCpara(BCnode, BCpara, freq_max)
 
         # Store input parameters
         self.BCpara = BCpara
-        self.BCvar=self.__init_ADEvariables(self.BCpara, BCnode)
+        self.BCvar=BoundaryCondition.__init_ADEvariables(self.BCpara, BCnode)
 
 
 

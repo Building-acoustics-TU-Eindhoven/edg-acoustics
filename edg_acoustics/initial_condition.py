@@ -64,9 +64,9 @@ class InitialCondition:
         # self.V = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         # self.W = numpy.zeros([xyz.shape[1], xyz.shape[2]])
 
-        self.source_xyz = self.__set_source_location(source_xyz)
+        self.source_xyz = InitialCondition.__set_source_location(source_xyz)
         self.halfwidth = halfwidth
-        self.P,self.U, self.V, self.W = self.__monopole(xyz, source_xyz, halfwidth)
+        self.P,self.U, self.V, self.W = InitialCondition.__monopole(xyz, source_xyz, halfwidth)
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
