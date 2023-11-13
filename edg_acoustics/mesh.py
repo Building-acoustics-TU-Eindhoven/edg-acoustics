@@ -101,9 +101,9 @@ class Mesh:
 
     def __init__(self, filename: str, BC_labels: dict[str, int]):
         # Init from file
-        self.__init_from_file(filename, BC_labels)
+        self.init_from_file(filename, BC_labels)
 
-    def __init_from_file(self, filename: str, BC_labels: dict[str, int]):
+    def init_from_file(self, filename: str, BC_labels: dict[str, int]):
         # Load mesh data from mesh file
         mesh_data = meshio.read(filename)
 
@@ -134,7 +134,7 @@ class Mesh:
         self.tets = mesh_data.cells_dict['tetra'].transpose()
 
         # Compute the mesh connectivity
-        self.EToE, self.EToF = self.__compute_element_connectivity(self.tets)
+        self.EToE, self.EToF = self.compute_element_connectivity(self.tets)
 
     # Operators --------------------------------------------------------------------------------------------------------
     def __eq__(self, other):
@@ -156,7 +156,7 @@ class Mesh:
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
-    def __compute_element_connectivity(tets: numpy.ndarray):
+    def compute_element_connectivity(tets: numpy.ndarray):
         """Computes element connectivity.
 
         Given a mesh made up of N_tets tetrahedra, compute the element connectivity. Element connectivity contains the

@@ -64,21 +64,21 @@ class InitialCondition:
         # self.V = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         # self.W = numpy.zeros([xyz.shape[1], xyz.shape[2]])
 
-        self.source_xyz = InitialCondition.__set_source_location(source_xyz)
+        self.source_xyz = InitialCondition.set_source_location(source_xyz)
         self.halfwidth = halfwidth
-        self.P,self.U, self.V, self.W = InitialCondition.__monopole(xyz, source_xyz, halfwidth)
+        self.P,self.U, self.V, self.W = InitialCondition.monopole(xyz, source_xyz, halfwidth)
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
-    def __set_source_location(source_xyz: float):
+    def set_source_location(source_xyz: float):
         return source_xyz
     
     @staticmethod
-    def __set_frequency(halfwidth: float):
+    def set_frequency(halfwidth: float):
         return halfwidth
     
     @staticmethod
-    def __monopole(xyz: numpy.ndarray, source_xyz: float, halfwidth: float):
+    def monopole(xyz: numpy.ndarray, source_xyz: float, halfwidth: float):
         P = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         U = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         V = numpy.zeros([xyz.shape[1], xyz.shape[2]])
