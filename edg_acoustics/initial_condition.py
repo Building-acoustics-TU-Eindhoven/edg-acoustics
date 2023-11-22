@@ -15,13 +15,14 @@ from __future__ import annotations
 import meshio
 import numpy
 import edg_acoustics
+from edg_acoustics.acoustics_simulation import AcousticsSimulation
 
 __all__ = ['InitialCondition','FREQ_MAX']
 
 # Constants
 FREQ_MAX = 2e3  # maximum resolvable frequency
 
-class InitialCondition:
+class InitialCondition(AcousticsSimulation):
     """Setup initial condition of a DG acoustics simulation for a specific scenario.
 
     :class:`.InitialCondition` is used to load the boundary condition parameters, determine the time step size.
@@ -56,17 +57,21 @@ class InitialCondition:
     #     self.IC.set_source_location(source_xyz)
     #     self.IC.set_frequency(halfwidth)
     #     self.initial_condition_field=self.IC.compute_field() #values at nodes, 
-    def __init__(self, xyz: numpy.ndarray, source_xyz: float, halfwidth: float):
+    def __init__(self, P: numpy.ndarray, U: numpy.ndarray, V: numpy.ndarray, W: numpy.ndarray):
         # Store input parameters
+        self.P = P
+        self.U = U
+        self.V = V
+        self.W = W
 
         # self.P = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         # self.U = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         # self.V = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         # self.W = numpy.zeros([xyz.shape[1], xyz.shape[2]])
 
-        self.source_xyz = InitialCondition.set_source_location(source_xyz)
-        self.halfwidth = halfwidth
-        self.P,self.U, self.V, self.W = InitialCondition.monopole(xyz, source_xyz, halfwidth)
+        # self.source_xyz = InitialCondition.set_source_location(source_xyz)
+        # self.halfwidth = halfwidth
+        # self.P,self.U, self.V, self.W = InitialCondition.monopole(xyz, source_xyz, halfwidth)
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
@@ -77,12 +82,22 @@ class InitialCondition:
     def set_frequency(halfwidth: float):
         return halfwidth
     
-    @staticmethod
-    def monopole(xyz: numpy.ndarray, source_xyz: float, halfwidth: float):
+    # @classmethod
+    # def monopole(cls, self, source_xyz: float, halfwidth: float):
+    #     P = numpy.zeros([self.xyz.shape[1], self.xyz.shape[2]])
+    #     U = numpy.zeros([self.xyz.shape[1], self.xyz.shape[2]])
+    #     V = numpy.zeros([self.xyz.shape[1], self.xyz.shape[2]])
+    #     W = numpy.zeros([self.xyz.shape[1], self.xyz.shape[2]])
+        
+    #     P = numpy.exp(-numpy.log(2) * ((self.xyz[0] - source_xyz[0])**2 + (self.xyz[1] - source_xyz[1])**2 + (self.xyz[2] - source_xyz[2])**2) / halfwidth**2)
+    #     return cls(P, U, V, W)
+
+    @classmethod
+    def monopole(cls, xyz: numpy.ndarray, source_xyz: float, halfwidth: float):
         P = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         U = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         V = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         W = numpy.zeros([xyz.shape[1], xyz.shape[2]])
         
         P = numpy.exp(-numpy.log(2) * ((xyz[0] - source_xyz[0])**2 + (xyz[1] - source_xyz[1])**2 + (xyz[2] - source_xyz[2])**2) / halfwidth**2)
-        return P, U, V, W
+        return cls(P, U, V, W)

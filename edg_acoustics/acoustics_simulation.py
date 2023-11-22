@@ -225,12 +225,12 @@ class AcousticsSimulation:
 
         Returns:
         """
-        self.IC = edg_acoustics.InitialCondition(self.xyz, source_xyz, halfwidth)
+        self.IC = edg_acoustics.InitialCondition.monopole(self.xyz, source_xyz, halfwidth)
+        # self.IC = edg_acoustics.InitialCondition.monopole(self, source_xyz, halfwidth)
         # self.IC.set_source_location(source_xyz)
         # self.IC.set_frequency(halfwidth) 
         
         # self.IC.monopole(self.xyz, source_xyz, halfwidth) 
-
         # self.initial_condition_field=self.IC.compute_field() #values at nodes, 
 
     def init_BC(self, BC_para: list[dict]):

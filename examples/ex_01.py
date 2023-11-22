@@ -43,6 +43,9 @@ sim.init_local_system()
 
 sim.init_BC(BC_para)
 sim.init_IC(source_xyz, halfwidth)
+
+# IC=edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)
+# edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)
 # sim.IC.set_frequency
 
 # setup=edg_acoustics.setup_(sim,BC_para)
