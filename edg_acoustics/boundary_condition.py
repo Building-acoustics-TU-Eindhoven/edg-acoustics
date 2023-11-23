@@ -68,17 +68,17 @@ class BoundaryCondition:
 
     def __init__(self, BCnode: list[dict], BCpara: list[dict], freq_max: float=FREQ_MAX):
         # Check if BCpara is compatible with AcousticsSimulation.BCnode and satisfies physical admissibility condition.
-        self.__check_BCpara(self, BCnode, BCpara, freq_max)
+        BoundaryCondition.check_BCpara(BCnode, BCpara, freq_max)
 
         # Store input parameters
         self.BCpara = BCpara
-        self.BCvar=self.__init_ADEvariables(self, self.BCpara, BCnode)
+        self.BCvar=BoundaryCondition.init_ADEvariables(self.BCpara, BCnode)
 
 
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
-    def __check_BCpara(self, BCnode: list[dict], BCpara: list[dict], freq_max: float):
+    def check_BCpara(BCnode: list[dict], BCpara: list[dict], freq_max: float):
         """Check if BCpara is compatible with AcousticsSimulation.BCnode and satisfies physical admissibility condition.
 
         Given an acoustics simulation data structure with a set of boundary conditions specified in acoustics_simulation.BCnode, 
@@ -112,12 +112,12 @@ class BoundaryCondition:
             assert paras['label'] == BCnode[index]['label'], "[edg_acoustics.BoundaryCondition]" 
             "All BC types must be present in the BCnode"
             "and all labels in the BCnode must have boundary parameters input."
-            assert numpy.abs(self.__compute_Re(omega, paras)).all() <= 1.0, "[edg_acoustics.BoundaryCondition] All reflection coefficient must be smaller than 1"
+            assert numpy.abs(BoundaryCondition.compute_Re(omega, paras)).all() <= 1.0, "[edg_acoustics.BoundaryCondition] All reflection coefficient must be smaller than 1"
             print('boundary parameter with label: ' + str(paras['label']) + ' has passed the physical admissbility test')
      
         
     @staticmethod
-    def __compute_Re(omega: numpy.ndarray, paras: dict):
+    def compute_Re(omega: numpy.ndarray, paras: dict):
         """Computes the reflection coefficient given the passed parameter of the multi-pole model at the frequencies of omega.
 
         Args:
@@ -151,7 +151,7 @@ class BoundaryCondition:
         return Re
     
     @staticmethod
-    def __init_ADEvariables(self, BCpara: list[dict], BCnode: list[dict]):
+    def init_ADEvariables(BCpara: list[dict], BCnode: list[dict]):
         """Initiate ADE variables, normal velocity, characteristic waves (outgoing and incoming).
 
         Args:

@@ -127,7 +127,7 @@ class AcousticsSimulation:
   
     def __init__(self, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int], node_tolerance: float = NODETOL):
         # Check if BC_list and mesh are compatible
-        if not self.__check_BC_list(BC_list, mesh):
+        if not AcousticsSimulation.check_BC_list(BC_list, mesh):
             raise ValueError(
                 "[edg_acoustics.AcousticSimulation] All BC labels must be present in the mesh and all labels in the mesh must be "
                 "present in BC_list.")
@@ -141,8 +141,8 @@ class AcousticsSimulation:
         self.node_tolerance = node_tolerance  # define a tolerance value for determining if a node belongs to a facet or not 
   
         # Compute attributes
-        self.Np = AcousticsSimulation.__compute_Np(Nx)  # number of colocation nodes in an element
-        self.Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # number of nodes in a face
+        self.Np = AcousticsSimulation.compute_Np(Nx)  # number of colocation nodes in an element
+        self.Nfp = AcousticsSimulation.compute_Nfp(Nx)  # number of nodes in a face
       
         # Set other attributes as None, since they are not yet initialized
         self.xyz = None
@@ -154,6 +154,8 @@ class AcousticsSimulation:
         self.Dt = None
         self.Fmask = None
         self.lift = None
+        # dtype_input: str ='float64'
+        # self.dtype_dict={'float64': numpy.float64, 'float32': numpy.float32}
 
     def init_local_system(self):
         """Compute local system matrices and local variables.
@@ -178,48 +180,72 @@ class AcousticsSimulation:
         Returns:
         """
 
-        self.rst, self.xyz = self.__compute_collocation_nodes(
+        self.rst, self.xyz = AcousticsSimulation.compute_collocation_nodes(
             self.mesh.EToV, self.mesh.vertices, self.Nx, dim=self.dim)
 
         # Compute the van der Monde matrix and its inverse
-        self.V = self.__compute_van_der_monde_matrix(self.Nx, self.rst)
+        self.V = AcousticsSimulation.compute_van_der_monde_matrix(self.Nx, self.rst)
         self.inV = numpy.linalg.inv(self.V)
 
         # Compute the van der Monde matrix of the gradients
-        self.V3D = self.__compute_grad_van_der_monde_matrix(self.Nx, self.rst)
+        self.V3D = AcousticsSimulation.compute_grad_van_der_monde_matrix(self.Nx, self.rst)
 
         # Compute mass matrix
-        self.M = self.__compute_mass_matrix(self.V)
+        self.M = AcousticsSimulation.compute_mass_matrix(self.V)
 
         # Compute the derivative matrices
-        self.Dr, self.Ds, self.Dt = self.__compute_derivative_matrix(self.Nx, self.rst)
+        self.Dr, self.Ds, self.Dt = AcousticsSimulation.compute_derivative_matrix(self.Nx, self.rst)
 
         # Find all the ``Nfp`` face nodes that lie on each surface.
-        self.Fmask=self.__compute_Fmask(self.rst, self.node_tolerance)
+        self.Fmask=AcousticsSimulation.compute_Fmask(self.rst, self.node_tolerance)
 
         # Compute the product of inverse of the mass matrix (3D) with the face-mass matrices (2D)
-        self.lift=self.__compute_lift(self.V, self.rst, self.Fmask)
+        self.lift=AcousticsSimulation.compute_lift(self.V, self.rst, self.Fmask)
 
         # Compute the metric terms for the mesh
-        self.rst_xyz, self.J = self.__geometric_factors_3d(self.xyz, self.Dr, self.Ds, self.Dt)
+        self.rst_xyz, self.J = AcousticsSimulation.geometric_factors_3d(self.xyz, self.Dr, self.Ds, self.Dt)
 
         # Compute the face normals at the collocation points and the surface Jacobians
-        self.n_xyz, self.sJ = self.__normals_3d(self.xyz, self.rst_xyz, self.J, self.Fmask)
+        self.n_xyz, self.sJ = AcousticsSimulation.normals_3d(self.xyz, self.rst_xyz, self.J, self.Fmask)
 
         # Compute ratio of surface to volume Jacobian of facial node
         self.Fscale = self.sJ / self.J [self.Fmask.reshape(-1), :]
 
         # Find connectivity for nodes given per surface in all elements
-        self.vmapM, self.vmapP = self.__build_maps_3d(self.xyz, self.mesh.EToE, self.mesh.EToF, self.Fmask, self.node_tolerance)
+        self.vmapM, self.vmapP = AcousticsSimulation.build_maps_3d(self.xyz, self.mesh.EToE, self.mesh.EToF, self.Fmask, self.node_tolerance)
 
         # Build specialized nodal maps for various types of boundary conditions,specified in BC_list
-        self.BCnode = self.__build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
+        self.BCnode = AcousticsSimulation.build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
             
+    def init_IC(self, source_xyz: float, halfwidth: float):
+        """setup the initial condition.
 
-        # print(self.vmapM)
+        
+        Args:
+
+        Returns:
+        """
+        self.IC = edg_acoustics.InitialCondition.monopole(self.xyz, source_xyz, halfwidth)
+        # self.IC = edg_acoustics.InitialCondition.monopole(self, source_xyz, halfwidth)
+        # self.IC.set_source_location(source_xyz)
+        # self.IC.set_frequency(halfwidth) 
+        
+        # self.IC.monopole(self.xyz, source_xyz, halfwidth) 
+        # self.initial_condition_field=self.IC.compute_field() #values at nodes, 
+
+    def init_BC(self, BC_para: list[dict]):
+        """setup the boundary condition.
+
+        
+        Args:
+
+        Returns:
+        """
+        self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
+
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
-    def __compute_Np(Nx: int):
+    def compute_Np(Nx: int):
         """Computes the number of collocation nodes for basis of polynomial degree ``Nx``.
 
         Args:
@@ -231,8 +257,9 @@ class AcousticsSimulation:
         """
         
         return int((Nx+1)*(Nx+2)*(Nx+3)/6)
-
-    def __compute_Nfp(Nx: int):
+    
+    @staticmethod
+    def compute_Nfp(Nx: int):
         """Computes the number of collocation nodes lying on a face of the elements for basis of polynomial degree ``Nx``.
 
         Args:
@@ -245,7 +272,8 @@ class AcousticsSimulation:
         
         return int((Nx+1)*(Nx+2)/2)
     
-    def __compute_Nx_from_Np(Np: int):
+    @staticmethod
+    def compute_Nx_from_Np(Np: int):
         """Computes the  polynomial degree ``Nx`` of basis from the number of collocation points.
 
         Args:
@@ -265,7 +293,7 @@ class AcousticsSimulation:
         return Nx
         
     @staticmethod
-    def __check_BC_list(BC_list: dict[str, int], mesh: edg_acoustics.Mesh):
+    def check_BC_list(BC_list: dict[str, int], mesh: edg_acoustics.Mesh):
         """Check if BC_list is compatible with mesh.
 
         Given a mesh with a set of boundary conditions specified in mesh.BC_triangles, check if the list of boundary
@@ -285,7 +313,7 @@ class AcousticsSimulation:
         return BC_list.keys() == mesh.BC_triangles.keys()
     
     @staticmethod
-    def __compute_collocation_nodes(EToV: numpy.ndarray, vertices: numpy.ndarray, Nx: int, dim: int = 3):
+    def compute_collocation_nodes(EToV: numpy.ndarray, vertices: numpy.ndarray, Nx: int, dim: int = 3):
         """
         Compute reference element (rst) coordinates of collocation points and the physical domain (xyz) coordinates
         self.dim and maximum polynomial degree to interpolate over these nodes (determines the number of nodes).
@@ -351,7 +379,7 @@ class AcousticsSimulation:
         return rst, xyz
     
     @staticmethod
-    def __compute_van_der_monde_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
+    def compute_van_der_monde_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
         """Compute the van der Monde matrix.
 
         Computes the van der Monde matrix for an orthonormal basis on the reference simplex. This polynomial basis
@@ -382,7 +410,7 @@ class AcousticsSimulation:
         return modepy.vandermonde(simplex_basis, rst)
 
     @staticmethod
-    def __compute_grad_van_der_monde_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
+    def compute_grad_van_der_monde_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
         """Compute the gradient van der Monde matrix.
 
         Computes the van der Monde matrices for the gradient of an orthonormal basis on the reference simplex. This polynomial basis
@@ -420,7 +448,7 @@ class AcousticsSimulation:
         return modepy.vandermonde(simplex_basis, rst)
     
     @staticmethod
-    def __compute_mass_matrix(V: numpy.ndarray):
+    def compute_mass_matrix(V: numpy.ndarray):
         """Compute the mass matrix from the van der Monde Matrix.
 
         Given the van der Monde matrix :math:`V`, compute the mass matrix :math:`M = V^{-t}V^{-1}`.
@@ -442,7 +470,7 @@ class AcousticsSimulation:
         return V_inv.transpose() @ V_inv
 
     @staticmethod
-    def __compute_derivative_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
+    def compute_derivative_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
         """Compute the derivative matrix.
 
         Args:
@@ -473,7 +501,7 @@ class AcousticsSimulation:
     
     # ------------------------------------------------------------------------------------------------------------------
     @staticmethod
-    def __compute_Fmask(rst: numpy.ndarray, node_tol: float):
+    def compute_Fmask(rst: numpy.ndarray, node_tol: float):
         """Find all the ``Nfp`` face nodes that lie on each surface.
 
         Args:
@@ -487,21 +515,21 @@ class AcousticsSimulation:
                 the reference element.
         """
         Np = rst.shape[1]  # get the number of collocation points
-        Nx = AcousticsSimulation.__compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
-        Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # get the number of collocation points per face
+        Nx = AcousticsSimulation.compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
+        Nfp = AcousticsSimulation.compute_Nfp(Nx)  # get the number of collocation points per face
 
-        Fmask=numpy.zeros([4, Nfp], dtype=numpy.uint8)
+        Fmask=numpy.zeros([4, Nfp],  dtype=numpy.uint8)
 
         # Find all the nodes that lie on each surface
         Fmask[0] = numpy.flatnonzero(numpy.abs(1+rst[2]) < node_tol)
         Fmask[1] = numpy.flatnonzero(numpy.abs(1+rst[1]) < node_tol)
-        Fmask[2] = numpy.flatnonzero(numpy.abs(1+rst.sum(axis=0)) < node_tol)
+        Fmask[2] = numpy.flatnonzero(numpy.abs(1+rst.sum(axis = 0 )) < node_tol)
         Fmask[3] = numpy.flatnonzero(numpy.abs(1+rst[0]) < node_tol)
 
         return Fmask
     
     @staticmethod
-    def __compute_lift(V: numpy.ndarray, rst: numpy.ndarray, Fmask: numpy.uint8):
+    def compute_lift(V: numpy.ndarray, rst: numpy.ndarray, Fmask: numpy.uint8):
         """Compute the lift matrix.
 
         Args:
@@ -517,8 +545,8 @@ class AcousticsSimulation:
             Return lift (numpy.ndarray): ``[Np, 4*Nfp]`` an array containing the product of inverse of the mass matrix (3D) with the face-mass matrices (2D) 
         """
         Np = V.shape[1]  # get the number of collocation points
-        Nx = AcousticsSimulation.__compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
-        Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
+        Nx = AcousticsSimulation.compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
+        Nfp = AcousticsSimulation.compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
 
         Emat = numpy.zeros([Np, Nfp*4], dtype=numpy.float64)
         faceR = numpy.zeros([1, Nfp])
@@ -551,7 +579,7 @@ class AcousticsSimulation:
         return V @ (V.transpose() @ Emat)
 
     @staticmethod
-    def __geometric_factors_3d(xyz: numpy.ndarray, Dr: numpy.ndarray, Ds: numpy.ndarray, Dt: numpy.ndarray):
+    def geometric_factors_3d(xyz: numpy.ndarray, Dr: numpy.ndarray, Ds: numpy.ndarray, Dt: numpy.ndarray):
         """Compute the metric elements for the local mappings of the elements.
 
         Args:
@@ -630,7 +658,7 @@ class AcousticsSimulation:
         return rst_xyz, J
 
     @staticmethod
-    def __normals_3d(xyz: numpy.ndarray, rst_xyz: numpy.ndarray, J: numpy.array, Fmask: numpy.ndarray):
+    def normals_3d(xyz: numpy.ndarray, rst_xyz: numpy.ndarray, J: numpy.array, Fmask: numpy.ndarray):
         """Compute outward pointing normals at element's faces as well as surface Jacobians.
 
         Args:
@@ -678,8 +706,8 @@ class AcousticsSimulation:
         """
         N_tets = xyz.shape[2]  # number of elements
         Np = xyz.shape[1]  # number of collocation points
-        Nx = AcousticsSimulation.__compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
-        Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
+        Nx = AcousticsSimulation.compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
+        Nfp = AcousticsSimulation.compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
 
         # Extract the transformation derivatives over the faces
         # the structure is the same as for rst_xyz
@@ -724,7 +752,7 @@ class AcousticsSimulation:
     
 
     @staticmethod
-    def __build_maps_3d(xyz: numpy.ndarray,EToE: numpy.ndarray, EToF: numpy.ndarray, Fmask: numpy.ndarray, node_tol: float):
+    def build_maps_3d(xyz: numpy.ndarray,EToE: numpy.ndarray, EToF: numpy.ndarray, Fmask: numpy.ndarray, node_tol: float):
         """Find connectivity for nodes given per surface in all elements
 
         Args:
@@ -748,8 +776,8 @@ class AcousticsSimulation:
 
         N_tets = xyz.shape[2]  # number of elements
         Np = xyz.shape[1]  # number of collocation points
-        Nx = AcousticsSimulation.__compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
-        Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
+        Nx = AcousticsSimulation.compute_Nx_from_Np(Np)  # get the polynomial degree of approximation
+        Nfp = AcousticsSimulation.compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
 
         nodeids=numpy.arange(N_tets*Np, dtype=numpy.uint64).reshape(Np, N_tets)
         vmapM=numpy.zeros([4, Nfp, N_tets], dtype=numpy.uint64)
@@ -795,7 +823,7 @@ class AcousticsSimulation:
     
     @staticmethod
     # ismember_col function, which cols of a are in b:
-    def __ismember_col(a: numpy.ndarray, b: numpy.ndarray):
+    def ismember_col(a: numpy.ndarray, b: numpy.ndarray):
         _, rev = numpy.unique(numpy.concatenate((a,b),axis=1),axis=1,return_inverse=True) # The indices to reconstruct the original array from the unique array
         # Split the index
         b_rev = rev[a.shape[1]:]
@@ -804,7 +832,7 @@ class AcousticsSimulation:
         return numpy.isin(a_rev,b_rev)
 
     @staticmethod
-    def __build_BCmaps_3d(BC_list: dict[str, int], EToV: numpy.ndarray, vmapM: numpy.ndarray, BC_triangles: dict[str, numpy.ndarray], Nx: int):
+    def build_BCmaps_3d(BC_list: dict[str, int], EToV: numpy.ndarray, vmapM: numpy.ndarray, BC_triangles: dict[str, numpy.ndarray], Nx: int):
         """Build specialized nodal maps for various types of boundary conditions,specified in BC_list
 
 
@@ -825,7 +853,7 @@ class AcousticsSimulation:
             BCnode (list[dict]): List of boundary map nodes, each element being a dictionary 
                 with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)]. 
         """
-        Nfp = AcousticsSimulation.__compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
+        Nfp = AcousticsSimulation.compute_Nfp(Nx)  # the number of nodes per surface for basis of polynomial degree Nx
         N_tets = EToV.shape[1]
         BCType=numpy.zeros([4, N_tets], dtype=numpy.uint8)
         VNUM = numpy.array([[1, 2, 3],[1, 2, 4], [2, 3, 4], [1, 3, 4]])-1
@@ -836,7 +864,7 @@ class AcousticsSimulation:
             tri=numpy.sort(BC_triangles[BCname], axis=1).T
             for indexl in range(4):
                 Face = numpy.sort(EToV[VNUM[indexl]], axis=0)
-                K_ =AcousticsSimulation.__ismember_col(Face, tri)
+                K_ =AcousticsSimulation.ismember_col(Face, tri)
                 # K_ = numpy.all(numpy.isin(Face, tri), axis=0) #wont work for all cases
                 BCType[indexl, K_] = BClabel
         BCType=BCType.repeat(Nfp,axis=0)
