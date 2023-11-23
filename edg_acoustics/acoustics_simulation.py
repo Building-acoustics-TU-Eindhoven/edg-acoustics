@@ -217,7 +217,7 @@ class AcousticsSimulation:
         # Build specialized nodal maps for various types of boundary conditions,specified in BC_list
         self.BCnode = AcousticsSimulation.build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
             
-    def init_IC(self, source_xyz: float, halfwidth: float):
+    def init_IC(self, IC : edg_acoustics.InitialCondition):
         """setup the initial condition.
 
         
@@ -225,7 +225,7 @@ class AcousticsSimulation:
 
         Returns:
         """
-        self.IC = edg_acoustics.InitialCondition.monopole(self.xyz, source_xyz, halfwidth)
+        self.IC = IC
         # self.IC = edg_acoustics.InitialCondition.monopole(self, source_xyz, halfwidth)
         # self.IC.set_source_location(source_xyz)
         # self.IC.set_frequency(halfwidth) 

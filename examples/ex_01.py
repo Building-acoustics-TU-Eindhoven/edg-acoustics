@@ -30,6 +30,10 @@ mesh_data_folder = os.path.abspath(os.path.join(os.path.split(os.path.abspath(__
 mesh_filename = os.path.join(mesh_data_folder, mesh_name)
 mesh = edg_acoustics.Mesh(mesh_filename, BC_labels)
 
+monopole_xyz = numpy.array([0.0, 1.0, 2.0])
+halfwidth = 1.0
+IC = edg_acoustics.Monopole_IC(monopole_xyz, halfwidth)
+
 # Approximation degrees
 Nx = 2  # in space
 Nt = 3  # in time
@@ -42,7 +46,7 @@ sim.init_local_system()
 # bc = edg_acoustics.BoundaryCondition(sim.BCnode, BC_para)
 
 sim.init_BC(BC_para)
-sim.init_IC(source_xyz, halfwidth)
+sim.init_IC(IC)
 
 # IC=edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)
 # edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)

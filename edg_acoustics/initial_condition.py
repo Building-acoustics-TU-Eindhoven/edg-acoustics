@@ -18,7 +18,7 @@ import abc
 import edg_acoustics
 from edg_acoustics.acoustics_simulation import AcousticsSimulation
 
-__all__ = ['InitialCondition','FREQ_MAX']
+__all__ = ['InitialCondition', 'Monopole_IC','FREQ_MAX']
 
 # Constants
 FREQ_MAX = 2e3  # maximum resolvable frequency
