@@ -31,19 +31,19 @@ class InitialCondition(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def P(self, xyz: numpy.ndarray)
+    def P(self, xyz: numpy.ndarray):
         pass
 
     @abc.abstractmethod
-    def U(self, xyz: numpy.ndarray)
+    def VX(self, xyz: numpy.ndarray):
         pass
 
     @abc.abstractmethod
-    def V(self, xyz: numpy.ndarray)
+    def VY(self, xyz: numpy.ndarray):
         pass
 
     @abc.abstractmethod
-    def W(self, xyz: numpy.ndarray)
+    def VZ(self, xyz: numpy.ndarray):
         pass
         
 
@@ -58,13 +58,13 @@ class Monopole_IC(InitialCondition):
         pressure = numpy.exp(-numpy.log(2) * ((xyz[0] - self.source_xyz[0])**2 + (xyz[1] - self.source_xyz[1])**2 + (xyz[2] - self.source_xyz[2])**2) / self.halfwidth**2)
         return pressure
     
-    def U(self, xyz: numpy.ndarray):
+    def VX(self, xyz: numpy.ndarray):
         return numpy.zeros([xyz.shape[1], xyz.shape[2]])
     
-    def V(self, xyz: numpy.ndarray):
+    def VY(self, xyz: numpy.ndarray):
         return numpy.zeros([xyz.shape[1], xyz.shape[2]])
     
-    def W(self, xyz: numpy.ndarray):
+    def VZ(self, xyz: numpy.ndarray):
         return numpy.zeros([xyz.shape[1], xyz.shape[2]])
 
 
