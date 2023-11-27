@@ -24,6 +24,8 @@ BC_para = [
             ]
 source_xyz = numpy.array ( [0.5, 0.5, 0.5])
 halfwidth = 0.2
+rho0=1.2
+c0=343
 # Mesh
 mesh_name = 'coarse_cube_room.msh'
 mesh_data_folder = os.path.abspath(os.path.join(os.path.split(os.path.abspath(__file__))[0], os.path.pardir, 'data', 'tests', 'mesh'))
@@ -40,13 +42,16 @@ Nt = 3  # in time
 
 
 
-
-sim = edg_acoustics.AcousticsSimulation(Nx, Nt, mesh, BC_labels)
+sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, Nt, mesh, BC_labels)
 sim.init_local_system()
+
+# Flux = edg_acoustics.UpwindFlux(rho0, c0, sim.n_xyz)
+
 # bc = edg_acoustics.BoundaryCondition(sim.BCnode, BC_para)
 
 sim.init_BC(BC_para)
 sim.init_IC(IC)
+# sim.init_Flux(rho0, c0)
 
 # IC=edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)
 # edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)

@@ -125,7 +125,7 @@ class AcousticsSimulation:
     """
 
   
-    def __init__(self, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int], node_tolerance: float = NODETOL):
+    def __init__(self, rho0: float, c0: float, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int], node_tolerance: float = NODETOL):
         # Check if BC_list and mesh are compatible
         if not AcousticsSimulation.check_BC_list(BC_list, mesh):
             raise ValueError(
@@ -133,6 +133,8 @@ class AcousticsSimulation:
                 "present in BC_list.")
 
         # Store input parameters
+        self.rho0 = rho0
+        self.c0 = c0
         self.mesh = mesh
         self.Nx = Nx
         self.Nt = Nt
@@ -226,23 +228,23 @@ class AcousticsSimulation:
         Returns:
         """
         self.IC = IC
-        # self.IC = edg_acoustics.InitialCondition.monopole(self, source_xyz, halfwidth)
-        # self.IC.set_source_location(source_xyz)
-        # self.IC.set_frequency(halfwidth) 
-        
-        # self.IC.monopole(self.xyz, source_xyz, halfwidth) 
-        # self.initial_condition_field=self.IC.compute_field() #values at nodes, 
+        self.P0 = IC.P(self.xyz)
+        self.VX0 = IC.VX(self.xyz)
+        self.VY0 = IC.VY(self.xyz)
+        self.VZ0 = IC.VZ(self.xyz)
 
     def init_BC(self, BC_para: list[dict]):
         """setup the boundary condition.
 
         
         Args:
+        
 
         Returns:
         """
         self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
 
+    
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
     def compute_Np(Nx: int):
