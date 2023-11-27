@@ -244,7 +244,18 @@ class AcousticsSimulation:
         """
         self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
 
-    
+    def init_Flux(self, Flux : edg_acoustics.Flux):
+        """setup the interior flux  calculation.
+
+        
+        Args:
+
+        Returns:
+        """
+        self.Flux = Flux
+        # self.Flux = edg_acoustics.UpwindFlux(self.rho0, self.c0, self.n_xyz)
+
+        
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
     def compute_Np(Nx: int):
