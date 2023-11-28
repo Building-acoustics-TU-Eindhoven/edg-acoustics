@@ -36,6 +36,7 @@ monopole_xyz = numpy.array([0.0, 1.0, 2.0])
 halfwidth = 1.0
 IC = edg_acoustics.Monopole_IC(monopole_xyz, halfwidth)
 
+
 # Approximation degrees
 Nx = 2  # in space
 Nt = 3  # in time
@@ -46,10 +47,10 @@ sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, Nt, mesh, BC_labels)
 sim.init_local_system()
 
 Flux = edg_acoustics.UpwindFlux(rho0, c0, sim.n_xyz)
-
+AbBC = edg_acoustics.AbsorbBC(sim.BCnode, BC_para)
 # bc = edg_acoustics.BoundaryCondition(sim.BCnode, BC_para)
 
-sim.init_BC(BC_para)
+sim.init_BC(AbBC)
 sim.init_IC(IC)
 sim.init_Flux(Flux)
 

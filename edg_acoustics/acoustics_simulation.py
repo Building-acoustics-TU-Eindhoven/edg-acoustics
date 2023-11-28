@@ -233,7 +233,7 @@ class AcousticsSimulation:
         self.VY0 = IC.VY(self.xyz)
         self.VZ0 = IC.VZ(self.xyz)
 
-    def init_BC(self, BC_para: list[dict]):
+    def init_BC(self, BC : edg_acoustics.BoundaryCondition):
         """setup the boundary condition.
 
         
@@ -242,7 +242,8 @@ class AcousticsSimulation:
 
         Returns:
         """
-        self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
+        # self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
+        self.BC = BC
 
     def init_Flux(self, Flux : edg_acoustics.Flux):
         """setup the interior flux  calculation.
