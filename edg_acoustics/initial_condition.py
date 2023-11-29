@@ -31,19 +31,19 @@ class InitialCondition(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def P(self, xyz: numpy.ndarray):
+    def Pinit(self, xyz: numpy.ndarray):
         pass
 
     @abc.abstractmethod
-    def VX(self, xyz: numpy.ndarray):
+    def VXinit(self, xyz: numpy.ndarray):
         pass
 
     @abc.abstractmethod
-    def VY(self, xyz: numpy.ndarray):
+    def VYinit(self, xyz: numpy.ndarray):
         pass
 
     @abc.abstractmethod
-    def VZ(self, xyz: numpy.ndarray):
+    def VZinit(self, xyz: numpy.ndarray):
         pass
         
 
@@ -54,17 +54,17 @@ class Monopole_IC(InitialCondition):
         self.source_xyz = source_xyz
         self.halfwidth = halfwidth
 
-    def P(self, xyz: numpy.ndarray):
+    def Pinit(self, xyz: numpy.ndarray):
         pressure = numpy.exp(-numpy.log(2) * ((xyz[0] - self.source_xyz[0])**2 + (xyz[1] - self.source_xyz[1])**2 + (xyz[2] - self.source_xyz[2])**2) / self.halfwidth**2)
         return pressure
     
-    def VX(self, xyz: numpy.ndarray):
+    def VXinit(self, xyz: numpy.ndarray):
         return numpy.zeros([xyz.shape[1], xyz.shape[2]])
     
-    def VY(self, xyz: numpy.ndarray):
+    def VYinit(self, xyz: numpy.ndarray):
         return numpy.zeros([xyz.shape[1], xyz.shape[2]])
     
-    def VZ(self, xyz: numpy.ndarray):
+    def VZinit(self, xyz: numpy.ndarray):
         return numpy.zeros([xyz.shape[1], xyz.shape[2]])
 
 

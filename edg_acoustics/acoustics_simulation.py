@@ -138,6 +138,7 @@ class AcousticsSimulation:
         self.mesh = mesh
         self.Nx = Nx
         self.Nt = Nt
+        self.N_tets = mesh.EToV.shape[1]
         self.BC_list = BC_list
         self.dim = 3  # we are always in 3D, just added for external reference     
         self.node_tolerance = node_tolerance  # define a tolerance value for determining if a node belongs to a facet or not 
@@ -219,6 +220,8 @@ class AcousticsSimulation:
         # Build specialized nodal maps for various types of boundary conditions,specified in BC_list
         self.BCnode = AcousticsSimulation.build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
             
+        self.dtscale = AcousticsSimulation.dtscale_3d(self.Fscale)    
+
     def init_IC(self, IC : edg_acoustics.InitialCondition):
         """setup the initial condition.
 
@@ -228,10 +231,10 @@ class AcousticsSimulation:
         Returns:
         """
         self.IC = IC
-        self.P0 = IC.P(self.xyz)
-        self.VX0 = IC.VX(self.xyz)
-        self.VY0 = IC.VY(self.xyz)
-        self.VZ0 = IC.VZ(self.xyz)
+        self.P0 = IC.Pinit(self.xyz)
+        self.Vx0 = IC.VXinit(self.xyz)
+        self.Vy0 = IC.VYinit(self.xyz)
+        self.Vz0 = IC.VZinit(self.xyz)
 
     def init_BC(self, BC : edg_acoustics.BoundaryCondition):
         """setup the boundary condition.
@@ -256,7 +259,30 @@ class AcousticsSimulation:
         self.Flux = Flux
         # self.Flux = edg_acoustics.UpwindFlux(self.rho0, self.c0, self.n_xyz)
 
+    def init_TimeIntegration(self, TI : edg_acoustics.TimeIntegrator):
+        """setup the interior flux  calculation.
+
         
+        Args:
+
+        Returns:
+        """
+        self.dVx = numpy.zeros_like(self.Fscale)
+        self.dVy = numpy.zeros_like(self.dVx)
+        self.dVz = numpy.zeros_like(self.dVx)
+        self.dP = numpy.zeros_like(self.dVx)
+        
+
+        self.fluxVx = numpy.zeros_like(self.dVx)
+        self.fluxVy = numpy.zeros_like(self.dVx)
+        self.fluxVz = numpy.zeros_like(self.dVx)
+        self.fluxP = numpy.zeros_like(self.dVx)
+
+        self.P = numpy.zeros_like(self.P0)
+        self.Vx = numpy.zeros_like(self.P0)
+        self.Vy = numpy.zeros_like(self.P0)
+        self.Vz = numpy.zeros_like(self.P0)
+        TI.step_dt()    
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
     def compute_Np(Nx: int):
@@ -890,6 +916,13 @@ class AcousticsSimulation:
 
         return BCnode
 
+    @staticmethod
+    # ismember_col function, which cols of a are in b:
+    def dtscale_3d(Fscale: numpy.ndarray):
+        Nfp = int(Fscale.shape[0] / 4)
+        AtoV = 3 / 2 * Fscale[[0, Nfp, 2*Nfp, 3*Nfp]].sum(axis=0)
+        diameter = 6 / AtoV
+        return diameter.min()
 
 
 
