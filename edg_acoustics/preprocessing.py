@@ -21,7 +21,6 @@ from edg_acoustics.acoustics_simulation import AcousticsSimulation
 __all__ = ['Flux', 'UpwindFlux']
 
 # Constants
-FREQ_MAX = 2e3  # maximum resolvable frequency
 
 
 

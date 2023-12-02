@@ -81,9 +81,9 @@ class BoundaryCondition(abc.ABC):
             #                'ou': numpy.empty(BCnode[index]['map'].shape), \
             #                'in': numpy.empty(BCnode[index]['map'].shape), \
             #                })
-             BCvar.append({'label': paras['label']})
-             BCvar[index].update({key: numpy.zeros(BCnode[index]['map'].shape) for key in ['vn', 'ou', 'in']})
-             for polekey in paras:
+            BCvar.append({'label': paras['label']})
+            BCvar[index].update({key: numpy.zeros(BCnode[index]['map'].shape) for key in ['vn', 'ou', 'in']})
+            for polekey in paras:
                 if polekey== 'RP':
                         BCvar[index].update({key: numpy.zeros([paras['RP'].shape[1], BCnode[index]['map'].shape[0]]) for key in ['phi', 'PHI']})
                 elif polekey=='CP':
