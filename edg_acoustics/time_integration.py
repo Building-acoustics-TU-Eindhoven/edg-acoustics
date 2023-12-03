@@ -24,11 +24,10 @@ __all__ = ['TimeIntegrator','RungeKutta_TI', 'CFL_Default']
 
 CFL_Default = 0.5
 class TimeIntegrator(abc.ABC):
-    def __init__(self, AcousticSimulation_object, CFL: float=CFL_Default):
-        # self.BC = BC_object
-        self.sim = AcousticSimulation_object
-        self.CFL = CFL
-        self.dt = CFL * self.sim.dtscale / self.sim.c0 / (2 * self.sim.Nx +1)
+    @abc.abstractmethod
+    def __init__(self):
+        pass
+
     
     @abc.abstractmethod
     def step_dt(self):
@@ -39,19 +38,21 @@ class TimeIntegrator(abc.ABC):
         pass
 
 class TSI_TI(TimeIntegrator):
-
+    def __init__(self, AcousticSimulation_object, CFL: float=CFL_Default):
+        # self.BC = BC_object
+        self.sim = AcousticSimulation_object
+        self.CFL = CFL
+        self.dt = CFL * self.sim.dtscale / self.sim.c0 / (2 * self.sim.Nx +1)
+        self.dVx = numpy.zeros_like(AcousticSimulation_object.Fscale)
+        self.dVy = numpy.zeros_like(self.dVx)
+        self.dVz = numpy.zeros_like(self.dVx)
+        self.dP = numpy.zeros_like(self.dVx)
+        
     def step_dt(self):
     # Takes the pressure, velocity at the time T and evolves it to time T + dt
     #   P0 := P(T)
     #   P := P(T + dt)
     # the same for all the other variables
-
-## used for debug
-        x = self.sim.xyz[0]
-        y = self.sim.xyz[1]
-        z = self.sim.xyz[2]
-
-        ##
 
 
         rho = self.sim.rho0
@@ -59,29 +60,35 @@ class TSI_TI(TimeIntegrator):
         dt = self.dt
         Nt = self.sim.Nt
 
-        P0 = self.sim.P0
-        Vx0 = self.sim.Vx0
-        Vy0 = self.sim.Vy0
-        Vz0 = self.sim.Vz0
+        P0 = self.sim.P.copy()
+        Vx0 = self.sim.Vx.copy()
+        Vy0 = self.sim.Vy.copy()
+        Vz0 = self.sim.Vz.copy()
+
+        # P = P0.copy()
+        # Vx = Vx0.copy()
+        # Vy = Vy0.copy()
+        # Vz = Vz0.copy()
 
         P = self.sim.P
         Vx = self.sim.Vx
         Vy = self.sim.Vy
         Vz = self.sim.Vz
+        # print(f"inside, P ID {id(P)}, sim.P ID {id(self.sim.P)}")
 
-        dP = self.sim.dP
-        dVx = self.sim.dVx
-        dVy = self.sim.dVy
-        dVz = self.sim.dVz
+        dP = self.dP
+        dVx = self.dVx
+        dVy = self.dVy
+        dVz = self.dVz
 
         nx = self.sim.n_xyz[0]
         ny = self.sim.n_xyz[1]
         nz = self.sim.n_xyz[2]
         
-        fluxP = self.sim.fluxP
-        fluxVx = self.sim.fluxVx
-        fluxVy = self.sim.fluxVy
-        fluxVz = self.sim.fluxVz
+        # fluxP = self.sim.fluxP
+        # fluxVx = self.sim.fluxVx
+        # fluxVy = self.sim.fluxVy
+        # fluxVz = self.sim.fluxVz
 
         lift = self.sim.lift
         Fscale = self.sim.Fscale
@@ -96,9 +103,15 @@ class TSI_TI(TimeIntegrator):
         BCvar = self.sim.BC.BCvar  # list, each element is dic ['label', 'vn', 'ou', 'in', 'phi', 'PHI', 'kexi1', 'kexi2', 'KEXI1', 'KEXI2']
         BCpara = self.sim.BC.BCpara
         Flux = self.sim.Flux
+        # print(f"inside, self.sim.BC.BCvar ID {id(self.sim.BC.BCvar)}, BCvar ID {id(BCvar)}")
+
+
 
         for Tind in range (1,Nt+1):
+            ## below 4 lines are References
+            # print(f"dVx ID {id(dVx)}, sim.dVx ID {id(self.sim.dVx)}")
             dVx.reshape(-1)[:] = Vx0.reshape(-1)[vmapM] - Vx0.reshape(-1)[vmapP]
+            # print(f"dVx ID {id(dVx)}, sim.dVx ID {id(self.sim.dVx)}")
             dVy.reshape(-1)[:] = Vy0.reshape(-1)[vmapM] - Vy0.reshape(-1)[vmapP]
             dVz.reshape(-1)[:] = Vz0.reshape(-1)[vmapM] - Vz0.reshape(-1)[vmapP]
             dP.reshape(-1)[:] = P0.reshape(-1)[vmapM] - P0.reshape(-1)[vmapP]
@@ -142,32 +155,40 @@ class TSI_TI(TimeIntegrator):
             Vy0 = -dPdy / rho + lift @ (Fscale * fluxVy)
             Vz0 = -dPdz / rho + lift @ (Fscale * fluxVz)
 
-            Vx = Vx + dt**Tind / AcousticsSimulation.factorial(Tind) * Vx0
-            Vy = Vy + dt**Tind / AcousticsSimulation.factorial(Tind) * Vy0
-            Vz = Vz + dt**Tind / AcousticsSimulation.factorial(Tind) * Vz0
-            P = P + dt**Tind / AcousticsSimulation.factorial(Tind) * P0
+            Vx += dt**Tind / AcousticsSimulation.factorial(Tind) * Vx0
+            Vy += dt**Tind / AcousticsSimulation.factorial(Tind) * Vy0
+            Vz += dt**Tind / AcousticsSimulation.factorial(Tind) * Vz0
+            P += dt**Tind / AcousticsSimulation.factorial(Tind) * P0
 
 
             for index, paras in enumerate(BCpara):
                 for polekey in paras:
                     if polekey== 'RP':
                             for i in range(paras['RP'].shape[1]):
-                                BCvar[index]['phi'] = BCvar[index]['ou'] - paras['RP'][1,i] * BCvar[index]['phi'][i]
+                                BCvar[index]['phi'][i] = BCvar[index]['ou'] - paras['RP'][1,i] * BCvar[index]['phi'][i]
 
-                            BCvar[index]['PHI'] = BCvar[index]['PHI'] + dt**Tind / AcousticsSimulation.factorial(Tind) * BCvar[index]['phi']
+                            BCvar[index]['PHI'] += dt**Tind / AcousticsSimulation.factorial(Tind) * BCvar[index]['phi']
                     elif polekey=='CP':
                         pass # to be added
 
-        P0 = P
-        Vx0 = Vx
-        Vy0 = Vy
-        Vz0 = Vz
+        # self.sim.P0 = P.copy()
+        # # print(f"inside, self.sim.P0 ID {id(self.sim.P0)}, sim.P ID {id(P)}")
+
+        # self.sim.Vx0 = Vx.copy()
+        # self.sim.Vy0 = Vy.copy()
+        # self.sim.Vz0 = Vz.copy()
+
         for index, paras in enumerate(BCpara):
-                for polekey in paras:
-                    if polekey== 'RP':
-                            BCvar[index]['phi'] = BCvar[index]['PHI']
-                    elif polekey=='CP':
-                        pass # to be added
+            for polekey in paras:
+                if polekey== 'RP':
+                        BCvar[index]['phi'] = BCvar[index]['PHI'].copy()
+                elif polekey=='CP':
+                    pass # to be added
+
+        # print(f"inside after loop, self.sim.BC.BCvar ID {id(self.sim.BC.BCvar)}, BCvar ID {id(BCvar)}")
+
+
+        
 
         print(f"max P inside loop {P.max()}")
 

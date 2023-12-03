@@ -48,12 +48,14 @@ sim.init_local_system()
 
 Flux = edg_acoustics.UpwindFlux(rho0, c0, sim.n_xyz)
 AbBC = edg_acoustics.AbsorbBC(sim.BCnode, BC_para)
-TSI = edg_acoustics.TSI_TI(sim, CFL)
+
 # bc = edg_acoustics.BoundaryCondition(sim.BCnode, BC_para)
 
 sim.init_BC(AbBC)
 sim.init_IC(IC)
 sim.init_Flux(Flux)
+
+TSI = edg_acoustics.TSI_TI(sim, CFL)
 sim.init_TimeIntegration(TSI)
 
 # IC=edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)

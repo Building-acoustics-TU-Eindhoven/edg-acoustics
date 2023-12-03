@@ -222,72 +222,6 @@ class AcousticsSimulation:
             
         self.dtscale = AcousticsSimulation.dtscale_3d(self.Fscale)    
 
-    def init_IC(self, IC : edg_acoustics.InitialCondition):
-        """setup the initial condition.
-
-        
-        Args:
-
-        Returns:
-        """
-        self.IC = IC
-        self.P0 = IC.Pinit(self.xyz)
-        self.Vx0 = IC.VXinit(self.xyz)
-        self.Vy0 = IC.VYinit(self.xyz)
-        self.Vz0 = IC.VZinit(self.xyz)
-
-    def init_BC(self, BC : edg_acoustics.BoundaryCondition):
-        """setup the boundary condition.
-
-        
-        Args:
-        
-
-        Returns:
-        """
-        # self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
-        self.BC = BC
-
-    def init_Flux(self, Flux : edg_acoustics.Flux):
-        """setup the interior flux  calculation.
-
-        
-        Args:
-
-        Returns:
-        """
-        self.Flux = Flux
-        # self.Flux = edg_acoustics.UpwindFlux(self.rho0, self.c0, self.n_xyz)
-
-    def init_TimeIntegration(self, TI : edg_acoustics.TimeIntegrator):
-        """setup the interior flux  calculation.
-
-        
-        Args:
-
-        Returns:
-        """
-        self.dVx = numpy.zeros_like(self.Fscale)
-        self.dVy = numpy.zeros_like(self.dVx)
-        self.dVz = numpy.zeros_like(self.dVx)
-        self.dP = numpy.zeros_like(self.dVx)
-        
-
-        self.fluxVx = numpy.zeros_like(self.dVx)
-        self.fluxVy = numpy.zeros_like(self.dVx)
-        self.fluxVz = numpy.zeros_like(self.dVx)
-        self.fluxP = numpy.zeros_like(self.dVx)
-
-        self.P = self.P0
-        self.Vx = self.Vx0
-        self.Vy = self.Vy0
-        self.Vz = self.Vz0
-
-        for i in range(50):
-            print(f"step {i+1}")
-            TI.step_dt()  
-            print(f"max P outside loop {self.P.max()}")
-  
         
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
@@ -991,8 +925,84 @@ class AcousticsSimulation:
             return n * AcousticsSimulation.factorial(n - 1)
 
 
+    # instance method -------------------------------------------------------------------------------------------------------
 
+    def init_IC(self, IC : edg_acoustics.InitialCondition):
+        """setup the initial condition.
+        Args:
 
+        Returns:
+        """
+        self.IC = IC
+        self.P0 = IC.Pinit(self.xyz)
+        self.Vx0 = IC.VXinit(self.xyz)
+        self.Vy0 = IC.VYinit(self.xyz)
+        self.Vz0 = IC.VZinit(self.xyz)
+
+    def init_BC(self, BC : edg_acoustics.BoundaryCondition):
+        """setup the boundary condition.
+
+        
+        Args:
+        
+
+        Returns:
+        """
+        # self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
+        self.BC = BC
+
+    def init_Flux(self, Flux : edg_acoustics.Flux):
+        """setup the interior flux  calculation.
+
+        
+        Args:
+
+        Returns:
+        """
+        self.Flux = Flux
+        # self.Flux = edg_acoustics.UpwindFlux(self.rho0, self.c0, self.n_xyz)
+
+    def init_TimeIntegration(self, TI : edg_acoustics.TimeIntegrator):
+        """setup the interior flux  calculation.
+
+        
+        Args:
+
+        Returns:
+        """
+        # self.dVx = numpy.zeros_like(self.Fscale)
+        # self.dVy = numpy.zeros_like(self.dVx)
+        # self.dVz = numpy.zeros_like(self.dVx)
+        # self.dP = numpy.zeros_like(self.dVx)
+        
+
+        # self.fluxVx = numpy.zeros_like(self.dVx)
+        # self.fluxVy = numpy.zeros_like(self.dVx)
+        # self.fluxVz = numpy.zeros_like(self.dVx)
+        # self.fluxP = numpy.zeros_like(self.dVx)
+        # self.P = numpy.zeros_like(self.P0)
+        # self.Vx = numpy.zeros_like(self.P0)
+        # self.Vy = numpy.zeros_like(self.P0)
+        # self.Vz = numpy.zeros_like(self.P0)
+
+        self.P = self.P0.copy()
+        self.Vx = self.Vx0.copy()
+        self.Vy = self.Vy0.copy()
+        self.Vz = self.Vz0.copy()
+
+        for i in range(50):
+            print(f"step {i+1}")
+            print(f"time {TI.dt * i}")
+            # print(f"outside, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
+            # print(f"outside, self.BC.BCvar ID {id(self.BC.BCvar)}")
+
+            TI.step_dt()  
+
+            # print(f"outside,after loop, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
+            # print(f"outside after loop, self.BC.BCvar ID {id(self.BC.BCvar)}")
+
+            print(f"max P outside loop {self.P.max()}")
+  
 
         
 
