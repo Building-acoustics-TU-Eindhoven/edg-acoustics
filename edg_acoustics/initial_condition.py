@@ -31,19 +31,19 @@ class InitialCondition(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def P(self, xyz: numpy.ndarray)
+    def P(self, xyz: numpy.ndarray):
         pass
 
     @abc.abstractmethod
-    def U(self, xyz: numpy.ndarray)
+    def U(self, xyz: numpy.ndarray):
         pass
 
     @abc.abstractmethod
-    def V(self, xyz: numpy.ndarray)
+    def V(self, xyz: numpy.ndarray):
         pass
 
     @abc.abstractmethod
-    def W(self, xyz: numpy.ndarray)
+    def W(self, xyz: numpy.ndarray):
         pass
         
 
