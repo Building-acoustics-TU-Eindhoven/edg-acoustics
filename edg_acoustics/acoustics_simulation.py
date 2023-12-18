@@ -941,7 +941,7 @@ class AcousticsSimulation:
             rec (numpy.ndarray): An (N_rec x 3) array containing the (x, y, z) coordinates of N_rec microphone locations.  
 
         Returns:
-            rst (numpy.ndarray): the
+            res (numpy.ndarray): indices of simplices containing the N_rec microphone points
         """
         node_ids = node_ids.T
         ori=node_coordinates[node_ids[:,0],:]
@@ -985,6 +985,7 @@ class AcousticsSimulation:
 
         Returns:
             sampleWeight (numpy.ndarray): ``[N_rec, Np]`` interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location).
+            nodeindex (numpy.ndarray): ``[N_rec, ]`` index of simplices that contatin the sample (microphone) points
         """
         tri = Delaunay(vertices.T, qhull_options = 'QJ')
         tri.simplices = EToV.T
@@ -1002,12 +1003,12 @@ class AcousticsSimulation:
             v_old = modepy.vandermonde(simplex_basis, old_nodes[:,:,i])
             sampleWeight[i] = v_new[i] @ numpy.linalg.inv(v_old)
 
-        return sampleWeight
+        return sampleWeight, nodeindex
     
 
     # instance method -------------------------------------------------------------------------------------------------------
 
-    def init_IC(self, IC : edg_acoustics.InitialCondition):
+    def init_IC(self, IC: edg_acoustics.InitialCondition):
         """setup the initial condition.
         Args:
 
@@ -1019,7 +1020,7 @@ class AcousticsSimulation:
         self.Vy0 = IC.VYinit(self.xyz)
         self.Vz0 = IC.VZinit(self.xyz)
 
-    def init_BC(self, BC : edg_acoustics.BoundaryCondition):
+    def init_BC(self, BC: edg_acoustics.BoundaryCondition):
         """setup the boundary condition.
 
         
@@ -1031,7 +1032,7 @@ class AcousticsSimulation:
         # self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
         self.BC = BC
 
-    def init_Flux(self, Flux : edg_acoustics.Flux):
+    def init_Flux(self, Flux: edg_acoustics.Flux):
         """setup the interior flux  calculation.
 
         
@@ -1042,46 +1043,42 @@ class AcousticsSimulation:
         self.Flux = Flux
         # self.Flux = edg_acoustics.UpwindFlux(self.rho0, self.c0, self.n_xyz)
 
-    def init_TimeIntegration(self, TI : edg_acoustics.TimeIntegrator):
-        """setup the interior flux  calculation.
+    def init_TimeIntegration(self, TI: edg_acoustics.TimeIntegrator, rec: numpy.ndarray, TotalTime: float=0.05):
+        """
+        perform the time integration
 
         
         Args:
 
         Returns:
         """
-        # self.dVx = numpy.zeros_like(self.Fscale)
-        # self.dVy = numpy.zeros_like(self.dVx)
-        # self.dVz = numpy.zeros_like(self.dVx)
-        # self.dP = numpy.zeros_like(self.dVx)
-        
-
-        # self.fluxVx = numpy.zeros_like(self.dVx)
-        # self.fluxVy = numpy.zeros_like(self.dVx)
-        # self.fluxVz = numpy.zeros_like(self.dVx)
-        # self.fluxP = numpy.zeros_like(self.dVx)
-        # self.P = numpy.zeros_like(self.P0)
-        # self.Vx = numpy.zeros_like(self.P0)
-        # self.Vy = numpy.zeros_like(self.P0)
-        # self.Vz = numpy.zeros_like(self.P0)
-
+        # create new attributes, storing the time-dependent acoustic variables
         self.P = self.P0.copy()
         self.Vx = self.Vx0.copy()
         self.Vy = self.Vy0.copy()
         self.Vz = self.Vz0.copy()
 
-        for i in range(50):
-            print(f"step {i+1}")
-            print(f"time {TI.dt * i}")
+        self.Ntimesteps = int(TotalTime / TI.dt)
+        print(f"Total simulation time is {TotalTime}")
+        print(f"Total number of simulation steps is {self.Ntimesteps}")
+
+        self.prec = numpy.zeros([rec.shape[1], self.Ntimesteps])
+        self.sampleWeight, self.nodeindex = AcousticsSimulation.sample3D(self.mesh.EToV, self.mesh.vertices, self.xyz, rec, self.Nx)
+
+
+        for StepIndex in range(self.Ntimesteps):
+            print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
+            print(f"Current/Total time {TI.dt * StepIndex}/{TotalTime}")
             # print(f"outside, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
             # print(f"outside, self.BC.BCvar ID {id(self.BC.BCvar)}")
 
             TI.step_dt()  
+            self.prec[:,StepIndex] = numpy.diag(self.sampleWeight @ self.P[:,self.nodeindex])
 
             # print(f"outside,after loop, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
             # print(f"outside after loop, self.BC.BCvar ID {id(self.BC.BCvar)}")
 
-            print(f"max P outside loop {self.P.max()}")
+            print(f"P at mic locations {self.prec[:,StepIndex]}")
   
 
         

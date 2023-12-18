@@ -50,7 +50,7 @@ class TSI_TI(TimeIntegrator):
         
     def step_dt(self):
     # Takes the pressure, velocity at the time T and evolves it to time T + dt
-    #   P0 := P(T)
+    #   P0 := P(T), P0 contains the (high-order) derivative values as well 
     #   P := P(T + dt)
     # the same for all the other variables
 
@@ -187,10 +187,7 @@ class TSI_TI(TimeIntegrator):
 
         # print(f"inside after loop, self.sim.BC.BCvar ID {id(self.sim.BC.BCvar)}, BCvar ID {id(BCvar)}")
 
-
-        
-
-        print(f"max P inside loop {P.max()}")
+        # print(f"max P inside loop {P.max()}")
 
 
 
