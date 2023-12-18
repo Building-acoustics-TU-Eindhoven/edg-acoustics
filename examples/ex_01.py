@@ -41,10 +41,16 @@ IC = edg_acoustics.Monopole_IC(monopole_xyz, halfwidth)
 Nx = 2  # in space
 Nt = 3  # in time
 CFL=0.9
-
+recx = numpy.array([0.2, 0.3])
+# recx = numpy.array([0.2])
+recy = recx.copy()
+recz = recx.copy()
+rec=numpy.vstack((recx, recy, recz))  # dim:[3,n_rec]
 
 sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, Nt, mesh, BC_labels)
 sim.init_local_system()
+
+Vnew= sim.sample3D(sim.mesh.EToV, sim.mesh.vertices, sim.xyz, rec, Nx)
 
 Flux = edg_acoustics.UpwindFlux(rho0, c0, sim.n_xyz)
 AbBC = edg_acoustics.AbsorbBC(sim.BCnode, BC_para)

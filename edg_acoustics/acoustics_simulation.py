@@ -19,6 +19,7 @@ from __future__ import annotations
 import modepy
 import numpy
 import edg_acoustics
+from scipy.spatial import Delaunay
 
 
 __all__ = ['AcousticsSimulation', 'NODETOL']
@@ -188,7 +189,7 @@ class AcousticsSimulation:
 
         # Compute the van der Monde matrix and its inverse
         self.V = AcousticsSimulation.compute_van_der_monde_matrix(self.Nx, self.rst)
-        self.inV = numpy.linalg.inv(self.V)
+        # self.inV = numpy.linalg.inv(self.V)
 
         # Compute the van der Monde matrix of the gradients
         self.V3D = AcousticsSimulation.compute_grad_van_der_monde_matrix(self.Nx, self.rst)
@@ -923,7 +924,86 @@ class AcousticsSimulation:
             return 1
         else:
             return n * AcousticsSimulation.factorial(n - 1)
+        
+    @staticmethod
+    #https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
+    def locate_simplex(node_coordinates: numpy.ndarray, node_ids: numpy.ndarray, rec: numpy.ndarray):  
+        """
+        brutal force approach, adopted from https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
 
+        Args:
+            node_coordinates (numpy.ndarray): (self.N_vertices,3) array containing the coordinates of each node
+            node_ids (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
+               tetrahedra that make up the mesh.
+            An (M x self.N_vertices) array containing the M coordinates of the self.N_vertices
+                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
+                describes an M-dimensional domain.
+            rec (numpy.ndarray): An (N_rec x 3) array containing the (x, y, z) coordinates of N_rec microphone locations.  
+
+        Returns:
+            rst (numpy.ndarray): the
+        """
+        node_ids = node_ids.T
+        ori=node_coordinates[node_ids[:,0],:]
+        v1=node_coordinates[node_ids[:,1],:]-ori
+        v2=node_coordinates[node_ids[:,2],:]-ori
+        v3=node_coordinates[node_ids[:,3],:]-ori
+        n_tet=len(node_ids)
+        v1r=v1.T.reshape((3,1,n_tet))
+        v2r=v2.T.reshape((3,1,n_tet))
+        v3r=v3.T.reshape((3,1,n_tet))
+        mat = numpy.concatenate((v1r,v2r,v3r), axis=1)
+        inv_mat = numpy.linalg.inv(mat.T).T    # https://stackoverflow.com/a/41851137/12056867        
+        if rec.size==3:  # to make rec has a dimension of (N_rec,3)
+            rec=rec.reshape((1,3))
+        N_rec=rec.shape[0]
+        orir=numpy.repeat(ori[:,:,numpy.newaxis], N_rec, axis=2)
+        newp=numpy.einsum('imk,kmj->kij',inv_mat,rec.T-orir)
+        val=numpy.all(newp>=0, axis=1) & numpy.all(newp <=1, axis=1) & (numpy.sum(newp, axis=1)<=1)
+        id_tet, id_p = numpy.nonzero(val)
+        res = -numpy.ones(N_rec, dtype=id_tet.dtype) # Sentinel value
+        res[id_p]=id_tet
+        return res
+        
+    @staticmethod
+    def sample3D(EToV: numpy.ndarray, vertices: numpy.ndarray, xyz: numpy.ndarray, rec: numpy.ndarray, Nx: int, dim: int = 3):
+        """
+        Compute interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location)
+
+        Args:
+            EToV (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
+               tetrahedra that make up the mesh.
+            vertices (numpy.ndarray): An (3 x self.N_vertices) array containing the xyz coordinates of the self.N_vertices
+                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
+                describes an M-dimensional domain.
+            xyz (numpy.ndarray): ``[3, Np, N_tets]``the physical space coordinates :math:`(x, y, z)` of the collocation points of each
+                element of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
+                ``xyz[2]`` contains the z-coordinates.
+            rec (numpy.ndarray): An (3 x N_rec) array containing the (x, y, z) coordinates of N_rec microphone locations.  
+            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
+            propagation problem.
+
+        Returns:
+            sampleWeight (numpy.ndarray): ``[N_rec, Np]`` interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location).
+        """
+        tri = Delaunay(vertices.T, qhull_options = 'QJ')
+        tri.simplices = EToV.T
+        tri.nsimplex = EToV.shape[1]
+
+        nodeindex = tri.find_simplex(rec.T)
+        # nodeindex = AcousticsSimulation.locate_simplex(vertices.T, EToV, rec.T)
+
+        old_nodes = xyz[:,:,nodeindex]
+        simplex_basis = modepy.modes.simplex_onb(dim, Nx)
+        v_new = modepy.vandermonde(simplex_basis, rec)
+        sampleWeight = numpy.zeros([rec.shape[1], len(simplex_basis)])
+
+        for i in range(old_nodes.shape[2]):
+            v_old = modepy.vandermonde(simplex_basis, old_nodes[:,:,i])
+            sampleWeight[i] = v_new[i] @ numpy.linalg.inv(v_old)
+
+        return sampleWeight
+    
 
     # instance method -------------------------------------------------------------------------------------------------------
 
