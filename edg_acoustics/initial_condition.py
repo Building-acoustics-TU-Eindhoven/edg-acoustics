@@ -44,6 +44,7 @@ class InitialCondition(abc.ABC):
 
     @abc.abstractmethod
     def VZinit(self, xyz: numpy.ndarray):
+        pass
 
         
 
