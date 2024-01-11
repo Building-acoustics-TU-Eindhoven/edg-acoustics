@@ -1,0 +1,18 @@
+name: DGAcoustics
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.8
+  - ipython
+  - spyder
+  - pymbolic
+  - mayavi
+  - cookiecutter
+  - setuptools>=67.6.0
+  - meshio>=5.3.4
+  - scipy
+  - pytest>=7.1.2
+  - pip:
+    - modepy==2021.1
+# this file would successfully create a conda environment and interpreter by command
+# "conda env create -n DGA2 -f environment.yml"
