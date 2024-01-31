@@ -41,7 +41,7 @@ IC = edg_acoustics.Monopole_IC(monopole_xyz, halfwidth)
 # Approximation degrees
 Nx = 2  # in space
 Nt = 3  # in time
-CFL=0.5
+CFL = 0.5
 recx = numpy.array([0.2, 0.3])
 # recx = numpy.array([0.2])
 recy = recx.copy()
@@ -62,8 +62,10 @@ sim.init_BC(AbBC)
 sim.init_IC(IC)
 sim.init_Flux(Flux)
 
-TSI = edg_acoustics.TSI_TI(sim, CFL)
-sim.init_TimeIntegration(TSI, rec, ToT)
+tsi_time_integrator = edg_acoustics.TSI_TI(sim, sim.L, Nt, CFL)
+sim.init_TimeIntegrator(tsi_time_integrator)
+sim.time_integration(rec, total_time=ToT)
+# sim.init_TimeIntegration(TSI, rec, ToT)
 
 ###########another simulation
 # sim.resetIC() # 
