@@ -17,6 +17,7 @@ import meshio
 import numpy
 import abc
 import edg_acoustics
+import math
 from edg_acoustics.acoustics_simulation import AcousticsSimulation
 from edg_acoustics.preprocessing import Flux, UpwindFlux
 
@@ -53,17 +54,18 @@ class TSI_TI(TimeIntegrator):
     #   P0 := P(T), P0 contains the (high-order) derivative values as well 
     #   P := P(T + dt)
     # the same for all the other variables
-
-
+        
+        P0 = self.sim.P0
+        Vx0 = self.sim.Vx0
+        Vy0 = self.sim.Vy0
+        Vz0 = self.sim.Vz0
+##########################
         rho = self.sim.rho0
         c0 = self.sim.c0
         dt = self.dt
         Nt = self.sim.Nt
 
-        P0 = self.sim.P.copy()
-        Vx0 = self.sim.Vx.copy()
-        Vy0 = self.sim.Vy.copy()
-        Vz0 = self.sim.Vz.copy()
+
 
         # P = P0.copy()
         # Vx = Vx0.copy()
@@ -148,17 +150,18 @@ class TSI_TI(TimeIntegrator):
                 fluxP.reshape(-1)[BCnode[index]['map']] = c0**2 * rho * (BCvar[index]['vn'] - 0.5 * (BCvar[index]['ou'] - BCvar[index]['in']))
 
             TP0 = P0.copy()
-            P0 = -c0**2 * rho * (self.sim.grad_3d(Vx0, 'x', rst_xyz, Dr, Ds, Dt) + self.sim.grad_3d(Vy0, 'y', rst_xyz, Dr, Ds, Dt) + 
-                                self.sim.grad_3d(Vz0, 'z', rst_xyz, Dr, Ds, Dt)) + lift @ (Fscale * fluxP)
-            dPdx, dPdy, dPdz = self.sim.grad_3d(TP0, 'grad', rst_xyz, Dr, Ds, Dt)
+            P0 = -c0**2 * rho * (self.sim.grad_3d(Vx0, 'x') + self.sim.grad_3d(Vy0, 'y') + 
+                                self.sim.grad_3d(Vz0, 'z')) + lift @ (Fscale * fluxP)
+            dPdx, dPdy, dPdz = self.sim.grad_3d(TP0, 'xyz')
             Vx0 = -dPdx / rho + lift @ (Fscale * fluxVx)
             Vy0 = -dPdy / rho + lift @ (Fscale * fluxVy)
             Vz0 = -dPdz / rho + lift @ (Fscale * fluxVz)
 
-            Vx += dt**Tind / AcousticsSimulation.factorial(Tind) * Vx0
-            Vy += dt**Tind / AcousticsSimulation.factorial(Tind) * Vy0
-            Vz += dt**Tind / AcousticsSimulation.factorial(Tind) * Vz0
-            P += dt**Tind / AcousticsSimulation.factorial(Tind) * P0
+
+            Vx += dt**Tind / math.factorial(Tind) * Vx0
+            Vy += dt**Tind / math.factorial(Tind) * Vy0
+            Vz += dt**Tind / math.factorial(Tind) * Vz0
+            P += dt**Tind / math.factorial(Tind) * P0
 
 
             for index, paras in enumerate(BCpara):
@@ -167,7 +170,7 @@ class TSI_TI(TimeIntegrator):
                             for i in range(paras['RP'].shape[1]):
                                 BCvar[index]['phi'][i] = BCvar[index]['ou'] - paras['RP'][1,i] * BCvar[index]['phi'][i]
 
-                            BCvar[index]['PHI'] += dt**Tind / AcousticsSimulation.factorial(Tind) * BCvar[index]['phi']
+                            BCvar[index]['PHI'] += dt**Tind / math.factorial(Tind) * BCvar[index]['phi']
                     elif polekey=='CP':
                         pass # to be added
 

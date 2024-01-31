@@ -161,6 +161,8 @@ class AcousticsSimulation:
         # dtype_input: str ='float64'
         # self.dtype_dict={'float64': numpy.float64, 'float32': numpy.float32}
 
+        self.init_local_system()
+
     def init_local_system(self):
         """Compute local system matrices and local variables.
 
@@ -858,72 +860,39 @@ class AcousticsSimulation:
         return BCnode
 
     @staticmethod
-    # ismember_col function, which cols of a are in b:
     def dtscale_3d(Fscale: numpy.ndarray):
+        # It calculate the minimum diameter of the inscribed spheres in all element, which is used as an indicator for the mesh size to determine maximum time step size
         Nfp = int(Fscale.shape[0] / 4)
         AtoV = 3 / 2 * Fscale[[0, Nfp, 2*Nfp, 3*Nfp]].sum(axis=0)
         diameter = 6 / AtoV
         return diameter.min()
 
-    @staticmethod
-    def grad_3d(U: numpy.ndarray, axis: str, rst_xyz: numpy.ndarray, Dr: numpy.ndarray, Ds: numpy.ndarray, Dt: numpy.ndarray):
+    def grad_3d(self, U: numpy.ndarray, axis: str):
         """Compute partial derivative dU/dx, dU/dy, dU/dz, or gradient dU/dx + dU/dy + dU/dz
 
         Args:
             U (numpy.ndarray): ``[Np, N_tets]`` the acoustic variables that needs to be differentiated.
-            axis (str): the axis to be differentiated w.r.t, e.g. 'x', 'y','z', 'grad'
-            rst_xyz (numpy.ndarray): ``[3, 3, Np, N_tets]`` The derivative of the local coordinates :math:`R = (r, s, t)` with 
-                respect to the physical coordinates :math:`X = (x, y, z)`, i.e., :math:`\\frac{\\partial R}{\\partial X}`, 
-                at the collocation nodes. Specifically:
-                    rst_xyz[0, 0]: rx ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial r}{\\partial x}`, at the collocation nodes.
-                    rst_xyz[1, 0]: sx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial s}{\\partial x}`, at the collocation nodes.
-                    rst_xyz[2, 0]: tx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial t}{\\partial x}`, at the collocation nodes.
-                    rst_xyz[0, 1]: ry (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial r}{\\partial y}`, at the collocation nodes.
-                    rst_xyz[1, 1]: sy (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial s}{\\partial y}`, at the collocation nodes.
-                    rst_xyz[2, 1]: ty (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial t}{\\partial y}`, at the collocation nodes.
-                    rst_xyz[0, 2]: rz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial r}{\\partial z}`, at the collocation nodes.
-                    rst_xyz[1, 2]: sz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial s}{\\partial z}`, at the collocation nodes.
-                    rst_xyz[2, 2]: tz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial t}{\\partial z}`, at the collocation nodes.
-            Dr (numpy.ndarray): ``[Np, Np]`` the differentiation matrix on the collation points implementing the discrete version of
-                :math:`\\frac{\\partial}{\\partial r}`.
-            Ds (numpy.ndarray): ``[Np, Np]`` the differentiation matrix on the collation points implementing the discrete version of
-                :math:`\\frac{\\partial}{\\partial s}`.
-            Dt (numpy.ndarray): ``[Np, Np]`` the differentiation matrix on the collation points implementing the discrete version of
-                :math:`\\frac{\\partial}{\\partial t}`.
+            axis (str): the axis to be differentiated w.r.t, e.g. 'x', 'y','z', 'xyz'
 
         Returns:
             (possible tuple):  containing:
                 dUdx/dUdy/dUdz (numpy.ndarray): ``[Np, N_tets]`` derivatives/gradient at every nodal point
         """
-        dUdr = Dr @ U
-        dUds = Ds @ U
-        dUdt = Dt @ U
+        dUdr = self.Dr @ U
+        dUds = self.Ds @ U
+        dUdt = self.Dt @ U
         if axis == 'x':
-            return rst_xyz[0, 0] * dUdr + rst_xyz[1, 0] * dUds + rst_xyz[2, 0] * dUdt
+            return self.rst_xyz[0, 0] * dUdr + self.rst_xyz[1, 0] * dUds + self.rst_xyz[2, 0] * dUdt
         elif axis == 'y':
-            return rst_xyz[0, 1] * dUdr + rst_xyz[1, 1] * dUds + rst_xyz[2, 1] * dUdt
+            return self.rst_xyz[0, 1] * dUdr + self.rst_xyz[1, 1] * dUds + self.rst_xyz[2, 1] * dUdt
         elif axis == 'z':
-            return rst_xyz[0, 2] * dUdr + rst_xyz[1, 2] * dUds + rst_xyz[2, 2] * dUdt
-        elif axis == 'grad':
-            return rst_xyz[0, 0] * dUdr + rst_xyz[1, 0] * dUds + rst_xyz[2, 0] * dUdt, \
-                   rst_xyz[0, 1] * dUdr + rst_xyz[1, 1] * dUds + rst_xyz[2, 1] * dUdt, \
-                   rst_xyz[0, 2] * dUdr + rst_xyz[1, 2] * dUds + rst_xyz[2, 2] * dUdt
+            return self.rst_xyz[0, 2] * dUdr + self.rst_xyz[1, 2] * dUds + self.rst_xyz[2, 2] * dUdt
+        elif axis == 'xyz':
+            return self.rst_xyz[0, 0] * dUdr + self.rst_xyz[1, 0] * dUds + self.rst_xyz[2, 0] * dUdt, \
+                   self.rst_xyz[0, 1] * dUdr + self.rst_xyz[1, 1] * dUds + self.rst_xyz[2, 1] * dUdt, \
+                   self.rst_xyz[0, 2] * dUdr + self.rst_xyz[1, 2] * dUds + self.rst_xyz[2, 2] * dUdt
 
-    @staticmethod
-    def factorial(n):
-        if n == 0 or n == 1:
-            return 1
-        else:
-            return n * AcousticsSimulation.factorial(n - 1)
+
         
     @staticmethod
     #https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
@@ -1014,7 +983,7 @@ class AcousticsSimulation:
 
         Returns:
         """
-        self.IC = IC
+        # self.IC = IC
         self.P0 = IC.Pinit(self.xyz)
         self.Vx0 = IC.VXinit(self.xyz)
         self.Vy0 = IC.VYinit(self.xyz)
@@ -1072,7 +1041,12 @@ class AcousticsSimulation:
             # print(f"outside, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
             # print(f"outside, self.BC.BCvar ID {id(self.BC.BCvar)}")
 
+
             TI.step_dt()  
+            self.P0 = self.P.copy()
+            self.Vx0 = self.Vx.copy()
+            self.Vy0 = self.Vy.copy()
+            self.Vz0 = self.Vz.copy()
             self.prec[:,StepIndex] = numpy.diag(self.sampleWeight @ self.P[:,self.nodeindex])
 
             # print(f"outside,after loop, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")

@@ -3,6 +3,7 @@ import sys
 import edg_acoustics
 import numpy
 
+
 from edg_acoustics.time_integration import TimeIntegrator
 #from edg_acoustics.mesh import Mesh
 # print(dir(edg_acoustics))
@@ -50,7 +51,7 @@ rec=numpy.vstack((recx, recy, recz))  # dim:[3,n_rec]
 ToT =0.05 # total simulation time in seconds
 
 sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, Nt, mesh, BC_labels)
-sim.init_local_system()
+
 
 Flux = edg_acoustics.UpwindFlux(rho0, c0, sim.n_xyz)
 AbBC = edg_acoustics.AbsorbBC(sim.BCnode, BC_para)
@@ -63,6 +64,14 @@ sim.init_Flux(Flux)
 
 TSI = edg_acoustics.TSI_TI(sim, CFL)
 sim.init_TimeIntegration(TSI, rec, ToT)
+
+###########another simulation
+# sim.resetIC() # 
+# sim.init_Flux(Flux)
+
+# TSI = edg_acoustics.TSI_TI(sim, CFL)
+# sim.init_TimeIntegration(TSI, rec, ToT)
+
 
 # IC=edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)
 # edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)
