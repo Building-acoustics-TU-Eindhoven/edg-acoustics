@@ -61,12 +61,13 @@ AbBC = edg_acoustics.AbsorbBC(sim.BCnode, BC_para)
 sim.init_BC(AbBC)
 sim.init_IC(IC)
 sim.init_Flux(Flux)
+sim.init_rec(rec, 'brute_force')
 
 TSI = edg_acoustics.TSI_TI(sim, CFL)
-sim.init_TimeIntegration(TSI, rec, ToT)
+sim.init_TimeIntegration(TSI, ToT)
 
 ###########another simulation
-# sim.resetIC() # 
+# sim.resetIC() #
 # sim.init_Flux(Flux)
 
 # TSI = edg_acoustics.TSI_TI(sim, CFL)

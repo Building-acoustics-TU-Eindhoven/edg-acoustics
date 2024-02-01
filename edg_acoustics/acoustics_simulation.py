@@ -896,11 +896,16 @@ class AcousticsSimulation:
         
     @staticmethod
     #https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
-    def locate_simplex(node_coordinates: numpy.ndarray, node_ids: numpy.ndarray, rec: numpy.ndarray):  
+    def locate_simplex(node_coordinates: numpy.ndarray, node_ids: numpy.ndarray, rec: numpy.ndarray, methodLocate = 'scipy'):  
         """
         brutal force approach, adopted from https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
 
         Args:
+            EToV (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
+               tetrahedra that make up the mesh.
+            vertices (numpy.ndarray): An (3 x self.N_vertices) array containing the xyz coordinates of the self.N_vertices
+                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
+                describes an M-dimensional domain.
             node_coordinates (numpy.ndarray): (self.N_vertices,3) array containing the coordinates of each node
             node_ids (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
                tetrahedra that make up the mesh.
@@ -912,61 +917,57 @@ class AcousticsSimulation:
         Returns:
             res (numpy.ndarray): indices of simplices containing the N_rec microphone points
         """
-        node_ids = node_ids.T
-        ori=node_coordinates[node_ids[:,0],:]
-        v1=node_coordinates[node_ids[:,1],:]-ori
-        v2=node_coordinates[node_ids[:,2],:]-ori
-        v3=node_coordinates[node_ids[:,3],:]-ori
-        n_tet=len(node_ids)
-        v1r=v1.T.reshape((3,1,n_tet))
-        v2r=v2.T.reshape((3,1,n_tet))
-        v3r=v3.T.reshape((3,1,n_tet))
-        mat = numpy.concatenate((v1r,v2r,v3r), axis=1)
-        inv_mat = numpy.linalg.inv(mat.T).T    # https://stackoverflow.com/a/41851137/12056867        
-        if rec.size==3:  # to make rec has a dimension of (N_rec,3)
-            rec=rec.reshape((1,3))
-        N_rec=rec.shape[0]
-        orir=numpy.repeat(ori[:,:,numpy.newaxis], N_rec, axis=2)
-        newp=numpy.einsum('imk,kmj->kij',inv_mat,rec.T-orir)
-        val=numpy.all(newp>=0, axis=1) & numpy.all(newp <=1, axis=1) & (numpy.sum(newp, axis=1)<=1)
-        id_tet, id_p = numpy.nonzero(val)
-        res = -numpy.ones(N_rec, dtype=id_tet.dtype) # Sentinel value
-        res[id_p]=id_tet
-        return res
+        if methodLocate == 'scipy':
+            tri = Delaunay(node_coordinates.T, qhull_options = 'QJ')
+            tri.simplices = node_ids.T
+            tri.nsimplex = node_ids.shape[1]
+
+            nodeindex = tri.find_simplex(rec.T)
+        elif methodLocate == 'brute_force':
+            node_ids = node_ids.T
+            ori=node_coordinates.T[node_ids[:,0],:]
+            v1=node_coordinates.T[node_ids[:,1],:]-ori
+            v2=node_coordinates.T[node_ids[:,2],:]-ori
+            v3=node_coordinates.T[node_ids[:,3],:]-ori
+            n_tet=len(node_ids)
+            v1r=v1.T.reshape((3,1,n_tet))
+            v2r=v2.T.reshape((3,1,n_tet))
+            v3r=v3.T.reshape((3,1,n_tet))
+            mat = numpy.concatenate((v1r,v2r,v3r), axis=1)
+            inv_mat = numpy.linalg.inv(mat.T).T    # https://stackoverflow.com/a/41851137/12056867        
+            # if rec.size==3:  # to make rec has a dimension of (N_rec,3)
+            #     rec=rec.reshape((1,3))
+            N_rec=rec.shape[1]
+            orir=numpy.repeat(ori[:,:,numpy.newaxis], N_rec, axis=2)
+            newp=numpy.einsum('imk,kmj->kij',inv_mat,rec-orir)
+            val=numpy.all(newp>=0, axis=1) & numpy.all(newp <=1, axis=1) & (numpy.sum(newp, axis=1)<=1)
+            id_tet, id_p = numpy.nonzero(val)
+            nodeindex = -numpy.ones(N_rec, dtype=id_tet.dtype) # Sentinel value
+            nodeindex[id_p]=id_tet
+        else:
+            raise ValueError("{method} is not an available search method, see documentation for available methods".format(method=methodLocate))
+            
+        return nodeindex
         
-    @staticmethod
-    def sample3D(EToV: numpy.ndarray, vertices: numpy.ndarray, xyz: numpy.ndarray, rec: numpy.ndarray, Nx: int, dim: int = 3):
+
+    def sample3D(self, methodLocate):
         """
         Compute interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location)
 
         Args:
-            EToV (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
-               tetrahedra that make up the mesh.
-            vertices (numpy.ndarray): An (3 x self.N_vertices) array containing the xyz coordinates of the self.N_vertices
-                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
-                describes an M-dimensional domain.
-            xyz (numpy.ndarray): ``[3, Np, N_tets]``the physical space coordinates :math:`(x, y, z)` of the collocation points of each
-                element of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
-                ``xyz[2]`` contains the z-coordinates.
-            rec (numpy.ndarray): An (3 x N_rec) array containing the (x, y, z) coordinates of N_rec microphone locations.  
-            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
-            propagation problem.
+            methodLocate (str): search method to locate the simplices containing the sample points
 
         Returns:
             sampleWeight (numpy.ndarray): ``[N_rec, Np]`` interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location).
             nodeindex (numpy.ndarray): ``[N_rec, ]`` index of simplices that contatin the sample (microphone) points
         """
-        tri = Delaunay(vertices.T, qhull_options = 'QJ')
-        tri.simplices = EToV.T
-        tri.nsimplex = EToV.shape[1]
+        # self.mesh.EToV, self.mesh.vertices, self.xyz, rec, self.Nx
+        nodeindex = AcousticsSimulation.locate_simplex(self.mesh.vertices, self.mesh.EToV, self.rec, methodLocate)
 
-        nodeindex = tri.find_simplex(rec.T)
-        # nodeindex = AcousticsSimulation.locate_simplex(vertices.T, EToV, rec.T)
-
-        old_nodes = xyz[:,:,nodeindex]
-        simplex_basis = modepy.modes.simplex_onb(dim, Nx)
-        v_new = modepy.vandermonde(simplex_basis, rec)
-        sampleWeight = numpy.zeros([rec.shape[1], len(simplex_basis)])
+        old_nodes = self.xyz[:,:,nodeindex]
+        simplex_basis = modepy.modes.simplex_onb(self.dim, self.Nx)
+        v_new = modepy.vandermonde(simplex_basis, self.rec)
+        sampleWeight = numpy.zeros([self.rec.shape[1], len(simplex_basis)])
 
         for i in range(old_nodes.shape[2]):
             v_old = modepy.vandermonde(simplex_basis, old_nodes[:,:,i])
@@ -995,11 +996,20 @@ class AcousticsSimulation:
         
         Args:
         
-
         Returns:
         """
         # self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
         self.BC = BC
+
+    def init_rec(self, rec: numpy.ndarray, methodLocate: str ='scipy'):
+        """setup the receiver locations.
+        Args:
+        
+        Returns:
+        """
+        self.rec = rec
+        self.sampleWeight, self.nodeindex = self.sample3D(methodLocate)
+
 
     def init_Flux(self, Flux: edg_acoustics.Flux):
         """setup the interior flux  calculation.
@@ -1012,7 +1022,7 @@ class AcousticsSimulation:
         self.Flux = Flux
         # self.Flux = edg_acoustics.UpwindFlux(self.rho0, self.c0, self.n_xyz)
 
-    def init_TimeIntegration(self, TI: edg_acoustics.TimeIntegrator, rec: numpy.ndarray, TotalTime: float=0.05):
+    def init_TimeIntegration(self, TI: edg_acoustics.TimeIntegrator, TotalTime: float=0.05):
         """
         perform the time integration
 
@@ -1031,8 +1041,7 @@ class AcousticsSimulation:
         print(f"Total simulation time is {TotalTime}")
         print(f"Total number of simulation steps is {self.Ntimesteps}")
 
-        self.prec = numpy.zeros([rec.shape[1], self.Ntimesteps])
-        self.sampleWeight, self.nodeindex = AcousticsSimulation.sample3D(self.mesh.EToV, self.mesh.vertices, self.xyz, rec, self.Nx)
+        self.prec = numpy.zeros([self.rec.shape[1], self.Ntimesteps])
 
 
         for StepIndex in range(self.Ntimesteps):
