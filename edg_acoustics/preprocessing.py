@@ -1,15 +1,15 @@
 """
-``edg_acoustics.initial_condition``
+``edg_acoustics.preprocessing``
 ======================
 
-The edg_acoustics initial_condition  provide more necessary functionalities 
-(based upon :mod:`edg_acoustics.acoustics_simulation`) to setup initial condition for a specific scenario.
+The edg_acoustics preprocessing  provide more necessary functionalities 
+(based upon :mod:`edg_acoustics.acoustics_simulation`) to setup/precalculate simulation constants for a specific scenario.
 
-Functions and classes present in :mod:`edg_acoustics.initial_condition` are listed below.
+Functions and classes present in :mod:`edg_acoustics.preprocessing` are listed below.
 
-Setup Initial Condition
+Setup Constants
 ---------------
-   InitialCondition
+   Flux
 """
 from __future__ import annotations
 import meshio
@@ -18,64 +18,76 @@ import abc
 import edg_acoustics
 from edg_acoustics.acoustics_simulation import AcousticsSimulation
 
-__all__ = ['InitialCondition', 'Monopole_IC','FREQ_MAX']
+__all__ = ['Flux', 'UpwindFlux']
 
 # Constants
-FREQ_MAX = 2e3  # maximum resolvable frequency
 
 
 
-class InitialCondition(abc.ABC):
+class Flux(abc.ABC):
     @abc.abstractmethod
     def __init__(self):
         pass
 
     @abc.abstractmethod
-    def Pinit(self, xyz: numpy.ndarray):
+    def FluxP(self):
         pass
 
     @abc.abstractmethod
-    def VXinit(self, xyz: numpy.ndarray):
+    def FluxVx(self):
         pass
 
     @abc.abstractmethod
-    def VYinit(self, xyz: numpy.ndarray):
+    def FluxVy(self):
         pass
 
     @abc.abstractmethod
-    def VZinit(self, xyz: numpy.ndarray):
+    def FluxVz(self):
         pass
-
         
 
 
-class Monopole_IC(InitialCondition):
+class UpwindFlux(Flux):
 
-    def __init__(self, source_xyz: numpy.ndarray, halfwidth: float):
-        self.source_xyz = source_xyz
-        self.halfwidth = halfwidth
+    def __init__(self, rho0: float, c0: float, n_xyz: numpy.ndarray):
+        self.rho0 = rho0
+        self.c0 = c0
+        self.n_xyz = n_xyz
+        self.cn1s = -c0 * n_xyz[0]**2 / 2
+        self.cn2s = -c0 * n_xyz[1]**2 / 2
+        self.cn3s = -c0 * n_xyz[2]**2 / 2
+        self.cn1n2 = -c0 * n_xyz[0] * n_xyz[1] / 2
+        self.cn1n3 = -c0 * n_xyz[0] * n_xyz[2] / 2
+        self.cn2n3 = -c0 * n_xyz[1] * n_xyz[2] / 2
+        self.n1rho = n_xyz[0] / 2 / rho0 
+        self.n2rho = n_xyz[1] / 2 / rho0 
+        self.n3rho = n_xyz[2] / 2 / rho0 
+        self.csn1rho = c0**2 * rho0 * n_xyz[0] / 2
+        self.csn2rho = c0**2 * rho0 * n_xyz[1] / 2
+        self.csn3rho = c0**2 * rho0 * n_xyz[2] / 2
 
-    def Pinit(self, xyz: numpy.ndarray):
-        pressure = numpy.exp(-numpy.log(2) * ((xyz[0] - self.source_xyz[0])**2 + (xyz[1] - self.source_xyz[1])**2 + (xyz[2] - self.source_xyz[2])**2) / self.halfwidth**2)
-        return pressure
+
+
+    def FluxP(self, dvx: numpy.ndarray, dvy: numpy.ndarray, dvz: numpy.ndarray, dp: numpy.ndarray):
+        return self.csn1rho * dvx + self.csn2rho * dvy + self.csn3rho * dvz - self.c0 / 2 * dp
     
-    def VXinit(self, xyz: numpy.ndarray):
-        return numpy.zeros([xyz.shape[1], xyz.shape[2]])
+    def FluxVx(self, dvx: numpy.ndarray, dvy: numpy.ndarray, dvz: numpy.ndarray, dp: numpy.ndarray):
+        return self.cn1s * dvx + self.cn1n2 * dvy + self.cn1n3 * dvz + self. n1rho * dp
     
-    def VYinit(self, xyz: numpy.ndarray):
-        return numpy.zeros([xyz.shape[1], xyz.shape[2]])
+    def FluxVy(self, dvx: numpy.ndarray, dvy: numpy.ndarray, dvz: numpy.ndarray, dp: numpy.ndarray):
+        return self.cn1n2 * dvx + self.cn2s * dvy + self.cn2n3 * dvz + self. n2rho * dp
     
-    def VZinit(self, xyz: numpy.ndarray):
-        return numpy.zeros([xyz.shape[1], xyz.shape[2]])
+    def FluxVz(self, dvx: numpy.ndarray, dvy: numpy.ndarray, dvz: numpy.ndarray, dp: numpy.ndarray):
+        return self.cn1n3 * dvx + self.cn2n3 * dvy + self.cn3s * dvz + self. n3rho * dp
 
 
 
 
 
-# class InitialCondition(AcousticsSimulation):
+# class Flux(AcousticsSimulation):
 #     """Setup initial condition of a DG acoustics simulation for a specific scenario.
 
-#     :class:`.InitialCondition` is used to load the boundary condition parameters, determine the time step size.
+#     :class:`.Flux` is used to load the boundary condition parameters, determine the time step size.
 
 #     Args:
 #         xyz (numpy.ndarray): ``[3, Np, N_tets]``the physical space coordinates :math:`(x, y, z)` of the collocation points of each
@@ -103,7 +115,7 @@ class Monopole_IC(InitialCondition):
 
 
 #     """
-#     #     self.IC = edg_acoustics.InitialCondition(self.mesh, source_xyz, halfwidth, self.Np)
+#     #     self.IC = edg_acoustics.Flux(self.mesh, source_xyz, halfwidth, self.Np)
 #     #     self.IC.set_source_location(source_xyz)
 #     #     self.IC.set_frequency(halfwidth)
 #     #     self.initial_condition_field=self.IC.compute_field() #values at nodes, 
@@ -119,9 +131,9 @@ class Monopole_IC(InitialCondition):
 #         # self.V = numpy.zeros([xyz.shape[1], xyz.shape[2]])
 #         # self.W = numpy.zeros([xyz.shape[1], xyz.shape[2]])
 
-#         # self.source_xyz = InitialCondition.set_source_location(source_xyz)
+#         # self.source_xyz = Flux.set_source_location(source_xyz)
 #         # self.halfwidth = halfwidth
-#         # self.P,self.U, self.V, self.W = InitialCondition.monopole(xyz, source_xyz, halfwidth)
+#         # self.P,self.U, self.V, self.W = Flux.monopole(xyz, source_xyz, halfwidth)
 
 #     # Static methods ---------------------------------------------------------------------------------------------------
 #     @staticmethod

@@ -2,6 +2,9 @@ import os
 import sys
 import edg_acoustics
 import numpy
+
+
+from edg_acoustics.time_integration import TimeIntegrator
 #from edg_acoustics.mesh import Mesh
 # print(dir(edg_acoustics))
 
@@ -19,34 +22,57 @@ BC_labels =  {'slip': 11, 'impedance1': 13, 'impedance2': 14}
 # i.e., all boundary conditions in the simulation must have an associated boundary condition parameters. 
 BC_para = [
             {'label': 11, 'RI': 1},
-            {'label': 13, 'RI': 0, 'RP': numpy.array([[2.849308439512733e+03],[2.843988875912554e+03]])},
-            {'label': 14, 'RI': 0, 'RP': numpy.array([[1.505778842079319e+04],[1.509502512409186e+04]])}
+            {'label': 13, 'RI': 0, 'RP': numpy.array([[2.849308439512733e+03, 1.849308439512733e+03],[2.843988875912554e+03, 3.843988875912554e+03]])},
+            {'label': 14, 'RI': 0, 'RP': numpy.array([[1.505778842079319e+04, 1.805778842079319e+04],[1.509502512409186e+04, 2.509502512409186e+04]])}
             ]
-source_xyz = numpy.array ( [0.5, 0.5, 0.5])
-halfwidth = 0.2
+rho0=1.2
+c0=343
 # Mesh
 mesh_name = 'coarse_cube_room.msh'
 mesh_data_folder = os.path.abspath(os.path.join(os.path.split(os.path.abspath(__file__))[0], os.path.pardir, 'data', 'tests', 'mesh'))
 mesh_filename = os.path.join(mesh_data_folder, mesh_name)
 mesh = edg_acoustics.Mesh(mesh_filename, BC_labels)
 
-monopole_xyz = numpy.array([0.0, 1.0, 2.0])
-halfwidth = 1.0
+monopole_xyz = numpy.array([0.5, 0.5, 0.5])
+halfwidth = 0.2
 IC = edg_acoustics.Monopole_IC(monopole_xyz, halfwidth)
+
 
 # Approximation degrees
 Nx = 2  # in space
 Nt = 3  # in time
+CFL=0.5
+recx = numpy.array([0.2, 0.3])
+# recx = numpy.array([0.2])
+recy = recx.copy()
+recz = recx.copy()
+rec=numpy.vstack((recx, recy, recz))  # dim:[3,n_rec]
+
+ToT =0.05 # total simulation time in seconds
+
+sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, Nt, mesh, BC_labels)
 
 
+Flux = edg_acoustics.UpwindFlux(rho0, c0, sim.n_xyz)
+AbBC = edg_acoustics.AbsorbBC(sim.BCnode, BC_para)
 
-
-sim = edg_acoustics.AcousticsSimulation(Nx, Nt, mesh, BC_labels)
-sim.init_local_system()
 # bc = edg_acoustics.BoundaryCondition(sim.BCnode, BC_para)
 
-sim.init_BC(BC_para)
+sim.init_BC(AbBC)
 sim.init_IC(IC)
+sim.init_Flux(Flux)
+sim.init_rec(rec, 'brute_force')
+
+TSI = edg_acoustics.TSI_TI(sim, CFL)
+sim.init_TimeIntegration(TSI, ToT)
+
+###########another simulation
+# sim.resetIC() #
+# sim.init_Flux(Flux)
+
+# TSI = edg_acoustics.TSI_TI(sim, CFL)
+# sim.init_TimeIntegration(TSI, rec, ToT)
+
 
 # IC=edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)
 # edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)

@@ -27,55 +27,79 @@ __all__ = ['BoundaryCondition','FREQ_MAX']
 FREQ_MAX = 2e3  # maximum resolvable frequency
 
 
-# class BoundaryCondition(abs.ABC):
-#      @abc.abstractmethod
-#     def __init__(self):
-#         pass
+class BoundaryCondition(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self):
+        pass
 
-#     def compute_Re(omega: numpy.ndarray, paras: dict):
-#         """Computes the reflection coefficient given the passed parameter of the multi-pole model at the frequencies of omega.
+    # @abc.abstractmethod
+    # def FluxABC(self):
+    #     pass
 
-#         Args:
-#             omega (numpy.ndarray): angular frequency.
-#             paras (dict): a dictionary of the multi-pole model parameters with keys (values) ['label'(int),'RI'(float),'RP'(numpy.ndarray),'CP'(numpy.ndarray)] 
-#                 The limit value of the reflection coefficient as the frequency approaches infinity is stored in the first row and first column.
+    # @abc.abstractmethod
+    # def FluxVxBC(self):
+    #     pass
 
-#         Returns:
-#             Re (numpy.ndarray): reflection coefficient at the frequencies of omega.
-#         """
-#         Re=numpy.ones(omega.shape)
+    # @abc.abstractmethod
+    # def FluxVyBC(self):
+    #     pass
 
-#         for polekey in paras:
-#             if polekey=='RI':
-#                     Re=Re*paras['RI']
-#             elif polekey== 'RP':
-#                     Re=Re*paras['RI']
-#                     A=paras['RP'][0,:]
-#                     zeta=paras['RP'][1,:]
-#                     for j in range(len(A)):
-#                         Re=Re+A[j] / (1j * omega + zeta[j])
-#             elif polekey=='CP':
-#                     Re=Re*paras['RI']
-#                     B=paras['CP'][0,:]
-#                     C=paras['CP'][1,:]
-#                     alpha=paras['CP'][2,:]
-#                     beta=paras['CP'][3,:]
-#                     for j in range(len(B)):
-#                         Re = Re + 0.5 * ((B[j] + 1j * C[j]) / (alpha[j] + 1j * beta[j] + 1j * omega) +
-#                                     (B[j] - 1j * C[j]) / (alpha[j] - 1j * beta[j] + 1j * omega))
-#         return Re
+    # @abc.abstractmethod
+    # def FluxVzBC(self):
+    #     pass
 
+# can be used for other transmission BC in the future
+    @staticmethod
+    def init_ADEvariables(BCpara: list[dict], BCnode: list[dict]):
+        """Initiate ADE variables, normal velocity, characteristic waves (outgoing and incoming).
+
+        Args:
+            BCpara (list [dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary 
+                with keys (values) ['label'(int),'RI'(float),'RP'(numpy.ndarray),'CP'(numpy.ndarray)]. 
+                'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\inf`. 
+                'RP' refers to real pole pairs, i.e., :math:`A` (stored in 1st row), :math:`\\zeta` (stored in 2nd row). 
+                'CP' refers to complex pole pairs, i.e., :math:`B` (stored in 1st row), :math:`C` (stored in 2nd row),
+                     :math:`\\alpha` (stored in 3rd row), :math:`\\beta`(stored in 4th row).
+                BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
+                i.e., all boundary conditions in the simulation must have an associated boundary condition parameters. 
+            BCnode (list[dict]): List of boundary map nodes, each element being a dictionary 
+                with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)]. 
+
+        Returns:
+            BCvar (list [dict]): a list of ADE variables. Each element corresponds to one type of BC, and is a dictionary 
+                with potential keys ['label', 'vn', 'ou', 'in', 'phi', 'PHI', 'kexi1', 'kexi2', 'KEXI1', 'KEXI2']. 
+                More details about the multi-pole model parameters and boundary condition can be found in reference https://doi.org/10.1121/10.0001128.
+                All values are stored rowwise in the numpy.array BCpara[BC_label], with :math:`\\zeta_i` occupying the first row.
+                is stored in the first row and last column.
+                BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
+                i.e., all boundary conditions in the simulation must have an associated boundary condition parameters. 
+        """
+        BCvar=[]
+        for index, paras in enumerate(BCpara):
+            #  BCvar.append({'label': paras['label'], \
+            #                'vn': numpy.empty(BCnode[index]['map'].shape), \
+            #                'ou': numpy.empty(BCnode[index]['map'].shape), \
+            #                'in': numpy.empty(BCnode[index]['map'].shape), \
+            #                })
+            BCvar.append({'label': paras['label']})
+            BCvar[index].update({key: numpy.zeros(BCnode[index]['map'].shape) for key in ['vn', 'ou', 'in']})
+            for polekey in paras:
+                if polekey== 'RP':
+                        BCvar[index].update({key: numpy.zeros([paras['RP'].shape[1], BCnode[index]['map'].shape[0]]) for key in ['phi', 'PHI']})
+                elif polekey=='CP':
+                        BCvar[index].update({key: numpy.zeros([paras['CP'].shape[1], BCnode[index]['map'].shape[0]]) for key in ['kexi1', 'kexi2', 'KEXI1', 'KEXI2']})
+
+             
+        # kexi for one pole are stored in row, so 3 poles means 3 rows, the number of columns are determined by the number of BCnode
+
+        return BCvar
     
 
 # class Slip_BC(BoundaryCondition):
      
 
-
-
-
-
-class BoundaryCondition:
-    """Setup boundary condition of a DG acoustics simulation for a specific scenario.
+class AbsorbBC(BoundaryCondition):
+    """Setup absorptiveboundary condition of a DG acoustics simulation for a specific scenario.
 
     :class:`.BoundaryCondition` is used to load the boundary condition parameters, determine the time step size.
 
@@ -117,13 +141,34 @@ class BoundaryCondition:
 
     def __init__(self, BCnode: list[dict], BCpara: list[dict], freq_max: float=FREQ_MAX):
         # Check if BCpara is compatible with AcousticsSimulation.BCnode and satisfies physical admissibility condition.
-        BoundaryCondition.check_BCpara(BCnode, BCpara, freq_max)
+        AbsorbBC.check_BCpara(BCnode, BCpara, freq_max)
 
         # Store input parameters
         self.BCpara = BCpara
         self.BCvar=BoundaryCondition.init_ADEvariables(self.BCpara, BCnode)
 
+    
+    # def FluxABC(self, map, vmap, P, U, V, W, ):
+    #     for index, paras in enumerate(BCpara):
+    #         #  BCvar.append({'label': paras['label'], \
+    #         #                'vn': numpy.empty(BCnode[index]['map'].shape), \
+    #         #                'ou': numpy.empty(BCnode[index]['map'].shape), \
+    #         #                'in': numpy.empty(BCnode[index]['map'].shape), \
+    #         #                })
+    #          BCvar.append({'label': paras['label']})
+    #          BCvar[index].update({key: numpy.zeros(BCnode[index]['map'].shape) for key in ['vn', 'ou', 'in']})
+    #          for polekey in paras:
+    #             if polekey== 'RP':
+    #                     BCvar[index].update({key: numpy.zeros([paras['RP'].shape[1], BCnode[index]['map'].shape[0]]) for key in ['phi', 'PHI']})
+    #             elif polekey=='CP':
+    #                     BCvar[index].update({key: numpy.zeros([paras['CP'].shape[1], BCnode[index]['map'].shape[0]]) for key in ['kexi1', 'kexi2', 'KEXI1', 'KEXI2']})
 
+             
+    #     # kexi for one pole are stored in row, so 3 poles means 3 rows, the number of columns are determined by the number of BCnode
+
+    #     return BCvar
+
+   
 
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
@@ -161,7 +206,7 @@ class BoundaryCondition:
             assert paras['label'] == BCnode[index]['label'], "[edg_acoustics.BoundaryCondition]" 
             "All BC types must be present in the BCnode"
             "and all labels in the BCnode must have boundary parameters input."
-            assert numpy.abs(BoundaryCondition.compute_Re(omega, paras)).all() <= 1.0, "[edg_acoustics.BoundaryCondition] All reflection coefficient must be smaller than 1"
+            assert numpy.abs(AbsorbBC.compute_Re(omega, paras)).all() <= 1.0, "[edg_acoustics.BoundaryCondition] All reflection coefficient must be smaller than 1"
             print('boundary parameter with label: ' + str(paras['label']) + ' has passed the physical admissbility test')
      
         
@@ -199,49 +244,6 @@ class BoundaryCondition:
                                     (B[j] - 1j * C[j]) / (alpha[j] - 1j * beta[j] + 1j * omega))
         return Re
     
-    @staticmethod
-    def init_ADEvariables(BCpara: list[dict], BCnode: list[dict]):
-        """Initiate ADE variables, normal velocity, characteristic waves (outgoing and incoming).
 
-        Args:
-            BCpara (list [dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary 
-                with keys (values) ['label'(int),'RI'(float),'RP'(numpy.ndarray),'CP'(numpy.ndarray)]. 
-                'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\inf`. 
-                'RP' refers to real pole pairs, i.e., :math:`A` (stored in 1st row), :math:`\\zeta` (stored in 2nd row). 
-                'CP' refers to complex pole pairs, i.e., :math:`B` (stored in 1st row), :math:`C` (stored in 2nd row),
-                     :math:`\\alpha` (stored in 3rd row), :math:`\\beta`(stored in 4th row).
-                BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
-                i.e., all boundary conditions in the simulation must have an associated boundary condition parameters. 
-            BCnode (list[dict]): List of boundary map nodes, each element being a dictionary 
-                with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)]. 
-
-        Returns:
-            BCvar (list [dict]): a list of ADE variables. Each element corresponds to one type of BC, and is a dictionary 
-                with potential keys ['label', 'vn', 'ou', 'in', 'phi', 'PHI', 'kexi1', 'kexi2', 'KEXI1', 'KEXI2']. 
-                More details about the multi-pole model parameters and boundary condition can be found in reference https://doi.org/10.1121/10.0001128.
-                All values are stored rowwise in the numpy.array BCpara[BC_label], with :math:`\\zeta_i` occupying the first row.
-                is stored in the first row and last column.
-                BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
-                i.e., all boundary conditions in the simulation must have an associated boundary condition parameters. 
-        """
-        BCvar=[]
-        for index, paras in enumerate(BCpara):
-            #  BCvar.append({'label': paras['label'], \
-            #                'vn': numpy.empty(BCnode[index]['map'].shape), \
-            #                'ou': numpy.empty(BCnode[index]['map'].shape), \
-            #                'in': numpy.empty(BCnode[index]['map'].shape), \
-            #                })
-             BCvar.append({'label': paras['label']})
-             BCvar[index].update({key: numpy.empty(BCnode[index]['map'].shape) for key in ['vn', 'ou', 'in']})
-             for polekey in paras:
-                if polekey== 'RP':
-                        BCvar[index].update({key: numpy.empty([paras['RP'].shape[1], BCnode[index]['map'].shape[0]]) for key in ['phi', 'PHI']})
-                elif polekey=='CP':
-                        BCvar[index].update({key: numpy.empty([paras['CP'].shape[1], BCnode[index]['map'].shape[0]]) for key in ['kexi1', 'kexi2', 'KEXI1', 'KEXI2']})
-
-             
-        # kexi for one pole are stored in row, so 3 poles means 3 rows, the number of columns are determined by the number of BCnode
-
-        return BCvar
     # -----------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------

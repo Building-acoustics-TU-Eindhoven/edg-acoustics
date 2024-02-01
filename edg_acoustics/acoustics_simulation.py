@@ -19,6 +19,7 @@ from __future__ import annotations
 import modepy
 import numpy
 import edg_acoustics
+from scipy.spatial import Delaunay
 
 
 __all__ = ['AcousticsSimulation', 'NODETOL']
@@ -125,7 +126,7 @@ class AcousticsSimulation:
     """
 
   
-    def __init__(self, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int], node_tolerance: float = NODETOL):
+    def __init__(self, rho0: float, c0: float, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int], node_tolerance: float = NODETOL):
         # Check if BC_list and mesh are compatible
         if not AcousticsSimulation.check_BC_list(BC_list, mesh):
             raise ValueError(
@@ -133,9 +134,12 @@ class AcousticsSimulation:
                 "present in BC_list.")
 
         # Store input parameters
+        self.rho0 = rho0
+        self.c0 = c0
         self.mesh = mesh
         self.Nx = Nx
         self.Nt = Nt
+        self.N_tets = mesh.EToV.shape[1]
         self.BC_list = BC_list
         self.dim = 3  # we are always in 3D, just added for external reference     
         self.node_tolerance = node_tolerance  # define a tolerance value for determining if a node belongs to a facet or not 
@@ -156,6 +160,8 @@ class AcousticsSimulation:
         self.lift = None
         # dtype_input: str ='float64'
         # self.dtype_dict={'float64': numpy.float64, 'float32': numpy.float32}
+
+        self.init_local_system()
 
     def init_local_system(self):
         """Compute local system matrices and local variables.
@@ -185,7 +191,7 @@ class AcousticsSimulation:
 
         # Compute the van der Monde matrix and its inverse
         self.V = AcousticsSimulation.compute_van_der_monde_matrix(self.Nx, self.rst)
-        self.inV = numpy.linalg.inv(self.V)
+        # self.inV = numpy.linalg.inv(self.V)
 
         # Compute the van der Monde matrix of the gradients
         self.V3D = AcousticsSimulation.compute_grad_van_der_monde_matrix(self.Nx, self.rst)
@@ -217,32 +223,9 @@ class AcousticsSimulation:
         # Build specialized nodal maps for various types of boundary conditions,specified in BC_list
         self.BCnode = AcousticsSimulation.build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
             
-    def init_IC(self, IC : edg_acoustics.InitialCondition):
-        """setup the initial condition.
+        self.dtscale = AcousticsSimulation.dtscale_3d(self.Fscale)    
 
         
-        Args:
-
-        Returns:
-        """
-        self.IC = IC
-        # self.IC = edg_acoustics.InitialCondition.monopole(self, source_xyz, halfwidth)
-        # self.IC.set_source_location(source_xyz)
-        # self.IC.set_frequency(halfwidth) 
-        
-        # self.IC.monopole(self.xyz, source_xyz, halfwidth) 
-        # self.initial_condition_field=self.IC.compute_field() #values at nodes, 
-
-    def init_BC(self, BC_para: list[dict]):
-        """setup the boundary condition.
-
-        
-        Args:
-
-        Returns:
-        """
-        self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
-
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
     def compute_Np(Nx: int):
@@ -876,8 +859,212 @@ class AcousticsSimulation:
 
         return BCnode
 
+    @staticmethod
+    def dtscale_3d(Fscale: numpy.ndarray):
+        # It calculate the minimum diameter of the inscribed spheres in all element, which is used as an indicator for the mesh size to determine maximum time step size
+        Nfp = int(Fscale.shape[0] / 4)
+        AtoV = 3 / 2 * Fscale[[0, Nfp, 2*Nfp, 3*Nfp]].sum(axis=0)
+        diameter = 6 / AtoV
+        return diameter.min()
+
+    def grad_3d(self, U: numpy.ndarray, axis: str):
+        """Compute partial derivative dU/dx, dU/dy, dU/dz, or gradient dU/dx + dU/dy + dU/dz
+
+        Args:
+            U (numpy.ndarray): ``[Np, N_tets]`` the acoustic variables that needs to be differentiated.
+            axis (str): the axis to be differentiated w.r.t, e.g. 'x', 'y','z', 'xyz'
+
+        Returns:
+            (possible tuple):  containing:
+                dUdx/dUdy/dUdz (numpy.ndarray): ``[Np, N_tets]`` derivatives/gradient at every nodal point
+        """
+        dUdr = self.Dr @ U
+        dUds = self.Ds @ U
+        dUdt = self.Dt @ U
+        if axis == 'x':
+            return self.rst_xyz[0, 0] * dUdr + self.rst_xyz[1, 0] * dUds + self.rst_xyz[2, 0] * dUdt
+        elif axis == 'y':
+            return self.rst_xyz[0, 1] * dUdr + self.rst_xyz[1, 1] * dUds + self.rst_xyz[2, 1] * dUdt
+        elif axis == 'z':
+            return self.rst_xyz[0, 2] * dUdr + self.rst_xyz[1, 2] * dUds + self.rst_xyz[2, 2] * dUdt
+        elif axis == 'xyz':
+            return self.rst_xyz[0, 0] * dUdr + self.rst_xyz[1, 0] * dUds + self.rst_xyz[2, 0] * dUdt, \
+                   self.rst_xyz[0, 1] * dUdr + self.rst_xyz[1, 1] * dUds + self.rst_xyz[2, 1] * dUdt, \
+                   self.rst_xyz[0, 2] * dUdr + self.rst_xyz[1, 2] * dUds + self.rst_xyz[2, 2] * dUdt
 
 
+        
+    @staticmethod
+    #https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
+    def locate_simplex(node_coordinates: numpy.ndarray, node_ids: numpy.ndarray, rec: numpy.ndarray, methodLocate = 'scipy'):  
+        """
+        brutal force approach, adopted from https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
+
+        Args:
+            EToV (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
+               tetrahedra that make up the mesh.
+            vertices (numpy.ndarray): An (3 x self.N_vertices) array containing the xyz coordinates of the self.N_vertices
+                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
+                describes an M-dimensional domain.
+            node_coordinates (numpy.ndarray): (self.N_vertices,3) array containing the coordinates of each node
+            node_ids (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
+               tetrahedra that make up the mesh.
+            An (M x self.N_vertices) array containing the M coordinates of the self.N_vertices
+                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
+                describes an M-dimensional domain.
+            rec (numpy.ndarray): An (N_rec x 3) array containing the (x, y, z) coordinates of N_rec microphone locations.  
+
+        Returns:
+            res (numpy.ndarray): indices of simplices containing the N_rec microphone points
+        """
+        if methodLocate == 'scipy':
+            tri = Delaunay(node_coordinates.T, qhull_options = 'QJ')
+            tri.simplices = node_ids.T
+            tri.nsimplex = node_ids.shape[1]
+
+            nodeindex = tri.find_simplex(rec.T)
+        elif methodLocate == 'brute_force':
+            node_ids = node_ids.T
+            ori=node_coordinates.T[node_ids[:,0],:]
+            v1=node_coordinates.T[node_ids[:,1],:]-ori
+            v2=node_coordinates.T[node_ids[:,2],:]-ori
+            v3=node_coordinates.T[node_ids[:,3],:]-ori
+            n_tet=len(node_ids)
+            v1r=v1.T.reshape((3,1,n_tet))
+            v2r=v2.T.reshape((3,1,n_tet))
+            v3r=v3.T.reshape((3,1,n_tet))
+            mat = numpy.concatenate((v1r,v2r,v3r), axis=1)
+            inv_mat = numpy.linalg.inv(mat.T).T    # https://stackoverflow.com/a/41851137/12056867        
+            # if rec.size==3:  # to make rec has a dimension of (N_rec,3)
+            #     rec=rec.reshape((1,3))
+            N_rec=rec.shape[1]
+            orir=numpy.repeat(ori[:,:,numpy.newaxis], N_rec, axis=2)
+            newp=numpy.einsum('imk,kmj->kij',inv_mat,rec-orir)
+            val=numpy.all(newp>=0, axis=1) & numpy.all(newp <=1, axis=1) & (numpy.sum(newp, axis=1)<=1)
+            id_tet, id_p = numpy.nonzero(val)
+            nodeindex = -numpy.ones(N_rec, dtype=id_tet.dtype) # Sentinel value
+            nodeindex[id_p]=id_tet
+        else:
+            raise ValueError("{method} is not an available search method, see documentation for available methods".format(method=methodLocate))
+            
+        return nodeindex
+        
+
+    def sample3D(self, methodLocate):
+        """
+        Compute interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location)
+
+        Args:
+            methodLocate (str): search method to locate the simplices containing the sample points
+
+        Returns:
+            sampleWeight (numpy.ndarray): ``[N_rec, Np]`` interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location).
+            nodeindex (numpy.ndarray): ``[N_rec, ]`` index of simplices that contatin the sample (microphone) points
+        """
+        # self.mesh.EToV, self.mesh.vertices, self.xyz, rec, self.Nx
+        nodeindex = AcousticsSimulation.locate_simplex(self.mesh.vertices, self.mesh.EToV, self.rec, methodLocate)
+
+        old_nodes = self.xyz[:,:,nodeindex]
+        simplex_basis = modepy.modes.simplex_onb(self.dim, self.Nx)
+        v_new = modepy.vandermonde(simplex_basis, self.rec)
+        sampleWeight = numpy.zeros([self.rec.shape[1], len(simplex_basis)])
+
+        for i in range(old_nodes.shape[2]):
+            v_old = modepy.vandermonde(simplex_basis, old_nodes[:,:,i])
+            sampleWeight[i] = v_new[i] @ numpy.linalg.inv(v_old)
+
+        return sampleWeight, nodeindex
+    
+
+    # instance method -------------------------------------------------------------------------------------------------------
+
+    def init_IC(self, IC: edg_acoustics.InitialCondition):
+        """setup the initial condition.
+        Args:
+
+        Returns:
+        """
+        # self.IC = IC
+        self.P0 = IC.Pinit(self.xyz)
+        self.Vx0 = IC.VXinit(self.xyz)
+        self.Vy0 = IC.VYinit(self.xyz)
+        self.Vz0 = IC.VZinit(self.xyz)
+
+    def init_BC(self, BC: edg_acoustics.BoundaryCondition):
+        """setup the boundary condition.
+
+        
+        Args:
+        
+        Returns:
+        """
+        # self.BC = edg_acoustics.BoundaryCondition(self.BCnode, BC_para)
+        self.BC = BC
+
+    def init_rec(self, rec: numpy.ndarray, methodLocate: str ='scipy'):
+        """setup the receiver locations.
+        Args:
+        
+        Returns:
+        """
+        self.rec = rec
+        self.sampleWeight, self.nodeindex = self.sample3D(methodLocate)
+
+
+    def init_Flux(self, Flux: edg_acoustics.Flux):
+        """setup the interior flux  calculation.
+
+        
+        Args:
+
+        Returns:
+        """
+        self.Flux = Flux
+        # self.Flux = edg_acoustics.UpwindFlux(self.rho0, self.c0, self.n_xyz)
+
+    def init_TimeIntegration(self, TI: edg_acoustics.TimeIntegrator, TotalTime: float=0.05):
+        """
+        perform the time integration
+
+        
+        Args:
+
+        Returns:
+        """
+        # create new attributes, storing the time-dependent acoustic variables
+        self.P = self.P0.copy()
+        self.Vx = self.Vx0.copy()
+        self.Vy = self.Vy0.copy()
+        self.Vz = self.Vz0.copy()
+
+        self.Ntimesteps = int(TotalTime / TI.dt)
+        print(f"Total simulation time is {TotalTime}")
+        print(f"Total number of simulation steps is {self.Ntimesteps}")
+
+        self.prec = numpy.zeros([self.rec.shape[1], self.Ntimesteps])
+
+
+        for StepIndex in range(self.Ntimesteps):
+            print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
+            print(f"Current/Total time {TI.dt * StepIndex}/{TotalTime}")
+            # print(f"outside, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
+            # print(f"outside, self.BC.BCvar ID {id(self.BC.BCvar)}")
+
+
+            TI.step_dt()  
+            self.P0 = self.P.copy()
+            self.Vx0 = self.Vx.copy()
+            self.Vy0 = self.Vy.copy()
+            self.Vz0 = self.Vz.copy()
+            self.prec[:,StepIndex] = numpy.diag(self.sampleWeight @ self.P[:,self.nodeindex])
+
+            # print(f"outside,after loop, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
+            # print(f"outside after loop, self.BC.BCvar ID {id(self.BC.BCvar)}")
+
+            print(f"P at mic locations {self.prec[:,StepIndex]}")
+  
+
+        
 
     # Properties -------------------------------------------------------------------------------------------------------
     # @property
