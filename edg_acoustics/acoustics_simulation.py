@@ -18,6 +18,7 @@ Discretisation
 from __future__ import annotations
 import modepy
 import numpy
+import math
 import edg_acoustics
 from scipy.spatial import Delaunay
 
@@ -127,6 +128,9 @@ class AcousticsSimulation:
 
   
     def __init__(self, rho0: float, c0: float, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int], node_tolerance: float = NODETOL):
+        # apalha: Nt should not be an input and an attribute of acoustic simulation, because you may have different time integrators, which do not take Nt
+        # Everything related to the time integrator is set in the time integrator. I did that, but did not change here to keep the old time evolution
+        # function working. Once you agree with this change, we can remove these dead code.
         # Check if BC_list and mesh are compatible
         if not AcousticsSimulation.check_BC_list(BC_list, mesh):
             raise ValueError(
@@ -223,7 +227,8 @@ class AcousticsSimulation:
         # Build specialized nodal maps for various types of boundary conditions,specified in BC_list
         self.BCnode = AcousticsSimulation.build_BCmaps_3d(self.BC_list, self.mesh.EToV, self.vmapM, self.mesh.BC_triangles, self.Nx)
             
-        self.dtscale = AcousticsSimulation.dtscale_3d(self.Fscale)    
+        self.dtscale = AcousticsSimulation.diameter_3d(self.Fscale)/ self.c0 / (2 * self.Nx +1)  
+   
 
         
     # Static methods ---------------------------------------------------------------------------------------------------
@@ -860,7 +865,7 @@ class AcousticsSimulation:
         return BCnode
 
     @staticmethod
-    def dtscale_3d(Fscale: numpy.ndarray):
+    def diameter_3d(Fscale: numpy.ndarray):
         # It calculate the minimum diameter of the inscribed spheres in all element, which is used as an indicator for the mesh size to determine maximum time step size
         Nfp = int(Fscale.shape[0] / 4)
         AtoV = 3 / 2 * Fscale[[0, Nfp, 2*Nfp, 3*Nfp]].sum(axis=0)
@@ -949,6 +954,7 @@ class AcousticsSimulation:
             
         return nodeindex
         
+ # instance method -------------------------------------------------------------------------------------------------------
 
     def sample3D(self, methodLocate):
         """
@@ -976,7 +982,6 @@ class AcousticsSimulation:
         return sampleWeight, nodeindex
     
 
-    # instance method -------------------------------------------------------------------------------------------------------
 
     def init_IC(self, IC: edg_acoustics.InitialCondition):
         """setup the initial condition.
@@ -985,10 +990,10 @@ class AcousticsSimulation:
         Returns:
         """
         # self.IC = IC
-        self.P0 = IC.Pinit(self.xyz)
-        self.Vx0 = IC.VXinit(self.xyz)
-        self.Vy0 = IC.VYinit(self.xyz)
-        self.Vz0 = IC.VZinit(self.xyz)
+        self.P = IC.Pinit(self.xyz)
+        self.Vx = IC.VXinit(self.xyz)
+        self.Vy = IC.VYinit(self.xyz)
+        self.Vz = IC.VZinit(self.xyz)
 
     def init_BC(self, BC: edg_acoustics.BoundaryCondition):
         """setup the boundary condition.
@@ -1022,7 +1027,148 @@ class AcousticsSimulation:
         self.Flux = Flux
         # self.Flux = edg_acoustics.UpwindFlux(self.rho0, self.c0, self.n_xyz)
 
-    def init_TimeIntegration(self, TI: edg_acoustics.TimeIntegrator, TotalTime: float=0.05):
+    def init_TimeIntegrator(self, time_integrator: edg_acoustics.TimeIntegrator):
+        """
+        perform the time integration
+
+        
+        Args:
+
+        Returns:
+        """
+        self.time_integrator = time_integrator
+
+    def RHS_operator(self, P, Vx, Vy, Vz, BCvar):
+        # Initialize jump variables
+        dVx = numpy.zeros_like(self.Fscale)
+        dVy = numpy.zeros_like(dVx)
+        dVz = numpy.zeros_like(dVx)
+        dP = numpy.zeros_like(dVx)
+
+        # calculate jump values across the faces of neighboring elements
+        dVx.reshape(-1)[:] = Vx.reshape(-1)[self.vmapM] - Vx.reshape(-1)[self.vmapP]
+        # print(f"dVx ID {id(dVx)}, sim.dVx ID {id(self.sim.dVx)}")
+        dVy.reshape(-1)[:] = Vy.reshape(-1)[self.vmapM] - Vy.reshape(-1)[self.vmapP]
+        dVz.reshape(-1)[:] = Vz.reshape(-1)[self.vmapM] - Vz.reshape(-1)[self.vmapP]
+        dP.reshape(-1)[:] = P.reshape(-1)[self.vmapM] - P.reshape(-1)[self.vmapP]
+
+        # Compute the inter-element fluxes
+        fluxVx = self.Flux.FluxVx(dVx, dVy, dVz, dP)  # has return object, might make copy, 
+        fluxVy = self.Flux.FluxVy(dVx, dVy, dVz, dP)
+        fluxVz = self.Flux.FluxVz(dVx, dVy, dVz, dP)
+        fluxP = self.Flux.FluxP(dVx, dVy, dVz, dP)
+
+        for index, paras in enumerate(self.BC.BCpara):
+            # 'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\inf`. 
+            # 'RP' refers to real pole pairs, i.e., :math:`A` (stored in 1st row), :math:`\\zeta` (stored in 2nd row). 
+            #     'CP' refers to complex pole pairs, i.e., :math:`B` (stored in 1st row), :math:`C` (stored in 2nd row),
+            #          :math:`\\alpha` (stored in 3rd row), :math:`\\beta`(stored in 4th row).
+            BCvar[index]['vn'] = self.n_xyz[0].reshape(-1)[self.BCnode[index]['map']] * Vx.reshape(-1)[self.BCnode[index]['vmap']] + \
+                            self.n_xyz[1].reshape(-1)[self.BCnode[index]['map']] * Vy.reshape(-1)[self.BCnode[index]['vmap']] + \
+                            self.n_xyz[2].reshape(-1)[self.BCnode[index]['map']] * Vz.reshape(-1)[self.BCnode[index]['vmap']] 
+            BCvar[index]['ou'] = BCvar[index]['vn'] + P.reshape(-1)[self.BCnode[index]['vmap']] / self.rho0 / self.c0
+            BCvar[index]['in'] = BCvar[index]['ou'] * paras['RI']
+
+            for polekey in paras:
+                if polekey == 'RP':
+                        for i in range(paras['RP'].shape[1]):
+                            BCvar[index]['in'] += paras['RP'][0,i] * BCvar[index]['phi'][i]
+                            BCvar[index]['phi'][i] = BCvar[index]['ou'] - paras['RP'][1,i] * BCvar[index]['phi'][i] # RHS for BCvar[index]['phi']
+                            
+                elif polekey=='CP':
+                    pass # to be added
+
+            fluxVx.reshape(-1)[self.BCnode[index]['map']] = self.n_xyz[0].reshape(-1)[self.BCnode[index]['map']] * P.reshape(-1)[self.BCnode[index]['vmap']] /self.rho0 - \
+                                                    self.n_xyz[0].reshape(-1)[self.BCnode[index]['map']] * self.c0 * (BCvar[index]['ou'] + BCvar[index]['in']) / 2
+            fluxVy.reshape(-1)[self.BCnode[index]['map']] = self.n_xyz[1].reshape(-1)[self.BCnode[index]['map']] * P.reshape(-1)[self.BCnode[index]['vmap']] /self.rho0 - \
+                                                    self.n_xyz[1].reshape(-1)[self.BCnode[index]['map']] * self.c0 * (BCvar[index]['ou'] + BCvar[index]['in']) / 2
+            fluxVz.reshape(-1)[self.BCnode[index]['map']] = self.n_xyz[2].reshape(-1)[self.BCnode[index]['map']] * P.reshape(-1)[self.BCnode[index]['vmap']] /self.rho0 - \
+                                                    self.n_xyz[2].reshape(-1)[self.BCnode[index]['map']] * self.c0 * (BCvar[index]['ou'] + BCvar[index]['in']) / 2
+            fluxP.reshape(-1)[self.BCnode[index]['map']] = self.c0**2 * self.rho0 * (BCvar[index]['vn'] - 0.5 * (BCvar[index]['ou'] - BCvar[index]['in']))
+
+        dPdx, dPdy, dPdz = self.grad_3d(P, 'xyz')
+        RHS_P = -self.c0**2 * self.rho0 * (self.grad_3d(Vx, 'x') + self.grad_3d(Vy, 'y') + self.grad_3d(Vz, 'z')) + self.lift @ (self.Fscale * fluxP)
+        RHS_Vx = -dPdx / self.rho0 + self.lift @ (self.Fscale * fluxVx)
+        RHS_Vy = -dPdy / self.rho0 + self.lift @ (self.Fscale * fluxVy)
+        RHS_Vz = -dPdz / self.rho0 + self.lift @ (self.Fscale * fluxVz)
+
+        return RHS_P, RHS_Vx, RHS_Vy, RHS_Vz, BCvar
+
+
+    def time_integration(self, **kwargs):
+        """
+        perform the time integration
+
+        
+        Args:
+
+        kwargs:
+            n_time_steps (int): number of time steps to compute.
+            total_time (float): total simulation time to compute, determines the number of time steps given the current time step.
+
+        Returns:
+        """
+
+        # Process optional input arguments
+        if ("n_time_steps" in kwargs and "total_time" in kwargs):
+            # Not possible to input both number of steps and total simulation time
+            raise ValueError("Set only n_time_steps or total_time, do not set both...")
+        
+        elif ("n_time_steps" in kwargs):
+            # Directly use the number of timesteps
+            self.Ntimesteps = kwargs['n_time_steps'] 
+
+        elif ("total_time" in kwargs):
+            # Compute the number of time steps from the total simulation time and the time step size of the time integrator
+            total_time = kwargs['total_time']
+            self.Ntimesteps = math.floor(total_time / self.time_integrator.dt)  # apalha: I would make this math.ceil, because you want to simulate a bit more and not less
+
+        else:
+            raise ValueError("You need to set n_time_steps or total_time...")
+        
+
+
+        print(f"Total simulation time is {total_time}")
+        print(f"Total number of simulation steps is {self.Ntimesteps}")
+
+        self.prec = numpy.zeros([self.rec.shape[1], self.Ntimesteps])
+
+        # Reset the time step variables
+        # self.P = self.P0.copy()
+        # self.Vx = self.Vx0.copy()
+        # self.Vy = self.Vy0.copy()
+        # self.Vz = self.Vz0.copy()
+
+        # Step the solution
+        for StepIndex in range(self.Ntimesteps):
+            print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
+            print(f"Current/Total time {self.time_integrator.dt * StepIndex}/{total_time}")
+            # print(f"outside, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
+            # print(f"outside, self.BC.BCvar ID {id(self.BC.BCvar)}")
+
+            # Reset the initial condition to prepare for the new time step
+            # For the first step this does nothing, but for the next steps it does the work
+            # Resetting before is better than after because in this way the previous step and
+            # current step solutions are available, which can always be useful.
+            
+
+            # print(f"outside,before step, P ID {id(self.P)}, P0 ID {id(self.P0)}, BC ID {id(self.BC)}, BC.var {id(self.BC.BCvar)},")
+
+            # self.P, self.Vx, self.Vy, self.Vz, self.BC = self.time_integrator.step_dt_new(self.P0, self.Vx0, self.Vy0, self.Vz0, self.BC) 
+            # self.time_integrator.step_dt_new(self.P0, self.Vx0, self.Vy0, self.Vz0, self.P, self.Vx, self.Vy, self.Vz, self.BC) # by changing the value in place, the ID of the object is not changed (no new object is created), but the previous value is lost, which is not important here, because the previous value is not used anymore       
+
+            self.time_integrator.step_dt_new(self.P, self.Vx, self.Vy, self.Vz, self.BC) # by changing the value in place, the ID of the object is not changed (no new object is created), but the previous value is lost, which is not important here, because the previous value is not used anymore
+
+            # print(f"outside,after step, P ID {id(self.P)}, P0 ID {id(self.P0)}, BC ID {id(self.BC)}, BC.var ")
+
+            self.prec[:,StepIndex] = numpy.diag(self.sampleWeight @ self.P[:,self.nodeindex])
+
+            # print(f"outside,after loop, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
+            # print(f"outside after loop, self.BC.BCvar ID {id(self.BC.BCvar)}")
+
+            print(f"P at mic locations {self.prec[:,StepIndex]}")
+
+    def init_TimeIntegration(self, time_integrator: edg_acoustics.TimeIntegrator, rec: numpy.ndarray, TotalTime: float=0.05):
         """
         perform the time integration
 
@@ -1037,7 +1183,7 @@ class AcousticsSimulation:
         self.Vy = self.Vy0.copy()
         self.Vz = self.Vz0.copy()
 
-        self.Ntimesteps = int(TotalTime / TI.dt)
+        self.Ntimesteps = int(TotalTime / time_integrator.dt)
         print(f"Total simulation time is {TotalTime}")
         print(f"Total number of simulation steps is {self.Ntimesteps}")
 
@@ -1046,12 +1192,13 @@ class AcousticsSimulation:
 
         for StepIndex in range(self.Ntimesteps):
             print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
-            print(f"Current/Total time {TI.dt * StepIndex}/{TotalTime}")
+            print(f"Current/Total time {time_integrator.dt * StepIndex}/{TotalTime}")
             # print(f"outside, self.P ID {id(self.P)}, self.P0 ID {id(self.P0)}")
             # print(f"outside, self.BC.BCvar ID {id(self.BC.BCvar)}")
 
 
-            TI.step_dt()  
+            time_integrator.step_dt() 
+            
             self.P0 = self.P.copy()
             self.Vx0 = self.Vx.copy()
             self.Vy0 = self.Vy.copy()
@@ -1064,7 +1211,7 @@ class AcousticsSimulation:
             print(f"P at mic locations {self.prec[:,StepIndex]}")
   
 
-        
+    
 
     # Properties -------------------------------------------------------------------------------------------------------
     # @property
