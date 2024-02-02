@@ -39,35 +39,51 @@ class TimeIntegrator(abc.ABC):
         # the same for all the other variables
         pass
 
+    @abc.abstractmethod
+    def step_dt_new(self):
+        # Takes the pressure, velocity at the time T and evolves it to time T + dt
+        #   P0 := P(T)
+        #   P := P(T + dt)
+        # the same for all the other variables
+        pass
+
 class TSI_TI(TimeIntegrator):
-    def __init__(self, AcousticSimulation_object, L_operator: typing.Callable[[numpy.array, numpy.array, numpy.array, numpy.array]], Nt: int, CFL: float=CFL_Default):
+    def __init__(self, L_operator: typing.Callable[[numpy.array, numpy.array, numpy.array, numpy.array, edg_acoustics.BoundaryCondition]], dtscale: float, Nt: int, CFL: float=CFL_Default):
         # self.BC = BC_object
-        self.sim = AcousticSimulation_object
         self.L_operator = L_operator  # the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
         self.Nt = Nt  # degree of time integration
         self.CFL = CFL
-        self.dt = CFL * self.sim.dtscale / self.sim.c0 / (2 * self.sim.Nx +1)
-        self.dVx = numpy.zeros_like(AcousticSimulation_object.Fscale)
-        self.dVy = numpy.zeros_like(self.dVx)
-        self.dVz = numpy.zeros_like(self.dVx)
-        self.dP = numpy.zeros_like(self.dVx)
+        self.dt = CFL * dtscale 
 
-    def step_dt_new(self, P0, Vx0, Vy0, Vz0):
+    # def step_dt_new(self, P0, Vx0, Vy0, Vz0, P, Vx, Vy, Vz, BC):
+    def step_dt_new(self, P, Vx, Vy, Vz, BC):
          # Takes the pressure, velocity at the time T and evolves it to time T + dt
-    #   P0 := P(T), P0 contains the (high-order) derivative values as well 
+    #   P0 := P(T), and P0 contains the (high-order) derivative values as well 
     #   P := P(T + dt)
     # the same for all the other variables
 ##########################
 
-        P = P0.copy()
-        Vx = Vx0.copy()
-        Vy = Vy0.copy()
-        Vz = Vz0.copy()
-        # print(f"inside, P ID {id(P)}, sim.P ID {id(self.sim.P)}")
+        # P = P0.copy()
+        # Vx = Vx0.copy()
+        # Vy = Vy0.copy()
+        # Vz = Vz0.copy()
+        P0 = P.copy()
+        Vx0 = Vx.copy()
+        Vy0 = Vy.copy()
+        Vz0 = Vz.copy()
+        print(f"inside, P0 ID {id(P0)}, P ID {id(P)}")
 
+        for index, paras in enumerate(BC.BCpara):
+            for polekey in paras:
+                if polekey== 'RP':
+                        BC.BCvar[index]['phi'] = BC.BCvar[index]['PHI'].copy()
+                elif polekey=='CP':
+                    pass # to be added
+
+##########################                
         for Tind in range (1, self.Nt+1):
             # Compute L (L^{Tind-1} q)
-            P0, Vx0, Vy0, Vz0 = self.L_operator(P0, Vx0, Vy0, Vz0)
+            P0, Vx0, Vy0, Vz0, BC.BCvar = self.L_operator(P0, Vx0, Vy0, Vz0, BC.BCvar)
 
             # Add the Taylor term \frac{dt^{Tind}}{Tind!}L^{Tind}q
             Vx += self.dt**Tind / math.factorial(Tind) * Vx0
@@ -77,31 +93,16 @@ class TSI_TI(TimeIntegrator):
 
             # We need to look into this, I think this can also be included in self.sim.L
             # Or better even, added as another function to treat the boundary conditions
-            for index, paras in enumerate(self.sim.BC.BCpara):
+            for index, paras in enumerate(BC.BCpara):
                 for polekey in paras:
                     if polekey== 'RP':
-                            for i in range(paras['RP'].shape[1]):
-                                self.sim.BC.BCvar[index]['phi'][i] = self.sim.BC.BCvar[index]['ou'] - paras['RP'][1,i] * self.sim.BC.BCvar[index]['phi'][i]
-
-                            self.sim.BC.BCvar[index]['PHI'] += self.dt**Tind / math.factorial(Tind) * self.sim.BC.BCvar[index]['phi']
+                            BC.BCvar[index]['PHI'] += self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]['phi']
                     elif polekey=='CP':
                         pass # to be added
 
-        # self.sim.P0 = P.copy()
-        # # print(f"inside, self.sim.P0 ID {id(self.sim.P0)}, sim.P ID {id(P)}")
 
-        # self.sim.Vx0 = Vx.copy()
-        # self.sim.Vy0 = Vy.copy()
-        # self.sim.Vz0 = Vz.copy()
 
-        for index, paras in enumerate(self.sim.BC.BCpara):
-            for polekey in paras:
-                if polekey== 'RP':
-                        self.sim.BC.BCvar[index]['phi'] = self.sim.BC.BCvar[index]['PHI'].copy()
-                elif polekey=='CP':
-                    pass # to be added
-
-        return P, Vx, Vy, Vz 
+        # return P, Vx, Vy, Vz, BC
 
     def step_dt(self):
     # Takes the pressure, velocity at the time T and evolves it to time T + dt
