@@ -25,6 +25,13 @@ BC_para = [
             {'label': 13, 'RI': 0, 'RP': numpy.array([[2.849308439512733e+03, 1.849308439512733e+03],[2.843988875912554e+03, 3.843988875912554e+03]])},
             {'label': 14, 'RI': 0, 'RP': numpy.array([[1.505778842079319e+04, 1.805778842079319e+04],[1.509502512409186e+04, 2.509502512409186e+04]])}
             ]
+BC_para = [
+            {'label': 11, 'RI': 1},
+            {'label': 13, 'RI': 0, 'RP': numpy.array([[2.849308439512733e+03, 1.849308439512733e+03],[2.843988875912554e+03, 3.843988875912554e+03]]),
+             'CP': numpy.array([[-5.0, 10.0],[100.0, 3.0],[1.8e3, 1.3e3],[2.0e3, 4.0e3]])},
+            {'label': 14, 'RI': 0, 'RP': numpy.array([[1.505778842079319e+04, 1.805778842079319e+04],[1.509502512409186e+04, 2.509502512409186e+04]]),
+             'CP': numpy.array([[-5.0],[100.0],[1.8e3],[2.0e3]])},
+            ]
 rho0=1.2
 c0=343
 # Mesh
@@ -50,7 +57,7 @@ rec=numpy.vstack((recx, recy, recz))  # dim:[3,n_rec]
 
 ToT =0.05 # total simulation time in seconds
 
-sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, Nt, mesh, BC_labels)
+sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, mesh, BC_labels)
 
 
 Flux = edg_acoustics.UpwindFlux(rho0, c0, sim.n_xyz)

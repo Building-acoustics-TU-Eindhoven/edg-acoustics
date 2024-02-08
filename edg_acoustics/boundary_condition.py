@@ -32,22 +32,6 @@ class BoundaryCondition(abc.ABC):
     def __init__(self):
         pass
 
-    # @abc.abstractmethod
-    # def FluxABC(self):
-    #     pass
-
-    # @abc.abstractmethod
-    # def FluxVxBC(self):
-    #     pass
-
-    # @abc.abstractmethod
-    # def FluxVyBC(self):
-    #     pass
-
-    # @abc.abstractmethod
-    # def FluxVzBC(self):
-    #     pass
-
 # can be used for other transmission BC in the future
     @staticmethod
     def init_ADEvariables(BCpara: list[dict], BCnode: list[dict]):

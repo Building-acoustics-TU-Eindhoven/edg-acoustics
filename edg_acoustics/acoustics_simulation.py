@@ -37,7 +37,6 @@ class AcousticsSimulation:
     Args:
         Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
             propagation problem.
-        Nt (int): the order of the time integration scheme.
         mesh (edg_acoustics.Mesh): the mesh object containing the mesh information for the domain discretisation.
         BC_list (dict[str, int]): a dictionary containing the definition of the boundary
             conditions that are present in the mesh. BC_list.keys() must contain the same elements as
@@ -78,7 +77,6 @@ class AcousticsSimulation:
         Np (int): number of collocation nodes in an element.
         Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
             propagation problem.
-        Nt (int): the order of the time integration scheme.
         rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
             ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
             the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates, ``rst[2]``
@@ -127,10 +125,7 @@ class AcousticsSimulation:
     """
 
   
-    def __init__(self, rho0: float, c0: float, Nx: int, Nt: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int], node_tolerance: float = NODETOL):
-        # apalha: Nt should not be an input and an attribute of acoustic simulation, because you may have different time integrators, which do not take Nt
-        # Everything related to the time integrator is set in the time integrator. I did that, but did not change here to keep the old time evolution
-        # function working. Once you agree with this change, we can remove these dead code.
+    def __init__(self, rho0: float, c0: float, Nx: int, mesh: edg_acoustics.Mesh, BC_list: dict[str, int], node_tolerance: float = NODETOL):
         # Check if BC_list and mesh are compatible
         if not AcousticsSimulation.check_BC_list(BC_list, mesh):
             raise ValueError(
@@ -142,7 +137,6 @@ class AcousticsSimulation:
         self.c0 = c0
         self.mesh = mesh
         self.Nx = Nx
-        self.Nt = Nt
         self.N_tets = mesh.EToV.shape[1]
         self.BC_list = BC_list
         self.dim = 3  # we are always in 3D, just added for external reference     
@@ -1071,13 +1065,16 @@ class AcousticsSimulation:
 
             for polekey in paras:
                 if polekey == 'RP':
-                        for i in range(paras['RP'].shape[1]):
-                            BCvar[index]['in'] += paras['RP'][0,i] * BCvar[index]['phi'][i]
-                            BCvar[index]['phi'][i] = BCvar[index]['ou'] - paras['RP'][1,i] * BCvar[index]['phi'][i] # RHS for BCvar[index]['phi']
+                    for i in range(paras['RP'].shape[1]):
+                        BCvar[index]['in'] += paras['RP'][0,i] * BCvar[index]['phi'][i]
+                        BCvar[index]['phi'][i] = BCvar[index]['ou'] - paras['RP'][1,i] * BCvar[index]['phi'][i] # RHS for BCvar[index]['phi']
                             
                 elif polekey=='CP':
-                    pass # to be added
-
+                    for i in range(paras['CP'].shape[1]):
+                        BCvar[index]['in'] += paras['CP'][0,i] * BCvar[index]['kexi1'][i] + paras['CP'][1,i] * BCvar[index]['kexi2'][i]
+                        kexi1temp = BCvar[index]['kexi1'][i].copy()
+                        BCvar[index]['kexi1'][i] = BCvar[index]['ou'] - paras['CP'][2,i] * BCvar[index]['kexi1'][i] - paras['CP'][3,i] * BCvar[index]['kexi2'][i] # RHS for BCvar[index]['kexi1']
+                        BCvar[index]['kexi2'][i] = - paras['CP'][2,i] * BCvar[index]['kexi2'][i] + paras['CP'][3,i] * kexi1temp # RHS for BCvar[index]['kexi2']   
             fluxVx.reshape(-1)[self.BCnode[index]['map']] = self.n_xyz[0].reshape(-1)[self.BCnode[index]['map']] * P.reshape(-1)[self.BCnode[index]['vmap']] /self.rho0 - \
                                                     self.n_xyz[0].reshape(-1)[self.BCnode[index]['map']] * self.c0 * (BCvar[index]['ou'] + BCvar[index]['in']) / 2
             fluxVy.reshape(-1)[self.BCnode[index]['map']] = self.n_xyz[1].reshape(-1)[self.BCnode[index]['map']] * P.reshape(-1)[self.BCnode[index]['vmap']] /self.rho0 - \

@@ -38,7 +38,6 @@ class TimeIntegrator(abc.ABC):
         #   P := P(T + dt)
         # the same for all the other variables
         pass
-
     @abc.abstractmethod
     def step_dt_new(self):
         # Takes the pressure, velocity at the time T and evolves it to time T + dt
@@ -48,7 +47,9 @@ class TimeIntegrator(abc.ABC):
         pass
 
 class TSI_TI(TimeIntegrator):
-    def __init__(self, L_operator: typing.Callable[[numpy.array, numpy.array, numpy.array, numpy.array, edg_acoustics.BoundaryCondition]], dtscale: float, Nt: int, CFL: float=CFL_Default):
+    def __init__(self, L_operator: typing.Callable[[numpy.array, numpy.array, numpy.array, numpy.array, list]], dtscale: float, Nt: int, CFL: float = CFL_Default):
+                # Nt (int): the order of the time integration scheme.
+
         # self.BC = BC_object
         self.L_operator = L_operator  # the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
         self.Nt = Nt  # degree of time integration
@@ -57,9 +58,10 @@ class TSI_TI(TimeIntegrator):
 
     # def step_dt_new(self, P0, Vx0, Vy0, Vz0, P, Vx, Vy, Vz, BC):
     def step_dt_new(self, P, Vx, Vy, Vz, BC):
-         # Takes the pressure, velocity at the time T and evolves it to time T + dt
-    #   P0 := P(T), and P0 contains the (high-order) derivative values as well 
-    #   P := P(T + dt)
+         # Takes the pressure, velocity, and BCvar at the time T and evolves it to time T + dt
+        # BC(edg_acoustics.BoundaryCondition) object neesds to be passed as a reference since we need to access the BCpara attribute
+    #   P0 contains the (high-order) derivative values 
+    #   P := P(T) and P(T + dt)
     # the same for all the other variables
 ##########################
 
@@ -76,9 +78,10 @@ class TSI_TI(TimeIntegrator):
         for index, paras in enumerate(BC.BCpara):
             for polekey in paras:
                 if polekey== 'RP':
-                        BC.BCvar[index]['phi'] = BC.BCvar[index]['PHI'].copy()
+                    BC.BCvar[index]['phi'] = BC.BCvar[index]['PHI'].copy()
                 elif polekey=='CP':
-                    pass # to be added
+                    BC.BCvar[index]['kexi1'] = BC.BCvar[index]['KEXI1'].copy()
+                    BC.BCvar[index]['kexi2'] = BC.BCvar[index]['KEXI2'].copy()
 
 ##########################                
         for Tind in range (1, self.Nt+1):
@@ -96,9 +99,10 @@ class TSI_TI(TimeIntegrator):
             for index, paras in enumerate(BC.BCpara):
                 for polekey in paras:
                     if polekey== 'RP':
-                            BC.BCvar[index]['PHI'] += self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]['phi']
+                        BC.BCvar[index]['PHI'] += self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]['phi']
                     elif polekey=='CP':
-                        pass # to be added
+                        BC.BCvar[index]['KEXI1'] += self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]['kexi1']
+                        BC.BCvar[index]['KEXI2'] += self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]['kexi2']
 
 
 
