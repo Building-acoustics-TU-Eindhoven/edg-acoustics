@@ -12,7 +12,11 @@ dependencies:
   - meshio>=5.3.4
   - scipy
   - pytest>=7.1.2
+  - myst-parser
   - pip:
     - modepy==2021.1
+    - sphinx-autoapi
+    - sphinx_rtd_theme
+    
 # this file would successfully create a conda environment and interpreter by command
 # "conda env create -n DGA2 -f environment.yml"
