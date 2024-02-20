@@ -4,14 +4,14 @@
    contain the root `toctree` directive.
 
 Welcome to edg_acoustics's documentation!
-==========================================================
+=========================================
 
 .. toctree::
   :maxdepth: 2
   :caption: Contents:
 
 Indices and tables
-==================
+====================
 
 * :ref:`genindex`
 * :ref:`modindex`
