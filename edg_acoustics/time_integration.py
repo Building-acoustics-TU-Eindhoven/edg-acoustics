@@ -59,22 +59,18 @@ class TSI_TI(TimeIntegrator):
 
     def __init__(
         self,
-        L_operator: typing.Callable[
-            [numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]
-        ],
+        L_operator: typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]],
         dtscale: float,
         Nt: int,
         CFL: float = CFL_Default,
     ):
         # Nt (int): the order of the time integration scheme.
 
-        # self.BC = BC_object
         self.L_operator = L_operator  # the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
         self.Nt = Nt  # degree of time integration
         self.CFL = CFL
         self.dt = CFL * dtscale
 
-    # def step_dt_new(self, P0, Vx0, Vy0, Vz0, P, Vx, Vy, Vz, BC):
     def step_dt_new(
         self,
         P: numpy.ndarray,
@@ -121,18 +117,12 @@ class TSI_TI(TimeIntegrator):
                 for polekey in paras:
                     if polekey == "RP":
                         BC.BCvar[index]["PHI"] += (
-                            self.dt**Tind
-                            / math.factorial(Tind)
-                            * BC.BCvar[index]["phi"]
+                            self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["phi"]
                         )
                     elif polekey == "CP":
                         BC.BCvar[index]["KEXI1"] += (
-                            self.dt**Tind
-                            / math.factorial(Tind)
-                            * BC.BCvar[index]["kexi1"]
+                            self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["kexi1"]
                         )
                         BC.BCvar[index]["KEXI2"] += (
-                            self.dt**Tind
-                            / math.factorial(Tind)
-                            * BC.BCvar[index]["kexi2"]
+                            self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["kexi2"]
                         )
