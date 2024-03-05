@@ -92,7 +92,7 @@ class TSI_TI(TimeIntegrator):
         Vx0 = Vx.copy()
         Vy0 = Vy.copy()
         Vz0 = Vz.copy()
-        print(f"inside, P0 ID {id(P0)}, P ID {id(P)}")  # used for debugging, fig
+        print(f"inside, P0 ID {id(P0)}, P ID {id(P)}")  # used for debugging
 
         for index, paras in enumerate(BC.BCpara):
             for polekey in paras:
@@ -103,26 +103,54 @@ class TSI_TI(TimeIntegrator):
                     BC.BCvar[index]["kexi2"] = BC.BCvar[index]["KEXI2"].copy()
 
         ##########################
+        # for Tind in range(1, self.Nt + 1):
+        #     # Compute L (L^{Tind-1} q)
+        #     P0, Vx0, Vy0, Vz0, BC.BCvar = self.L_operator(P0, Vx0, Vy0, Vz0, BC.BCvar)
+
+        #     # Add the Taylor term \frac{dt^{Tind}}{Tind!}L^{Tind}q
+        #     Vx += self.dt**Tind / math.factorial(Tind) * Vx0
+        #     Vy += self.dt**Tind / math.factorial(Tind) * Vy0
+        #     Vz += self.dt**Tind / math.factorial(Tind) * Vz0
+        #     P += self.dt**Tind / math.factorial(Tind) * P0
+
+        #     for index, paras in enumerate(BC.BCpara):
+        #         for polekey in paras:
+        #             if polekey == "RP":
+        #                 BC.BCvar[index]["PHI"] += (
+        #                     self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["phi"]
+        #                 )
+        #             elif polekey == "CP":
+        #                 BC.BCvar[index]["KEXI1"] += (
+        #                     self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["kexi1"]
+        #                 )
+        #                 BC.BCvar[index]["KEXI2"] += (
+        #                     self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["kexi2"]
+        #                 )
+
         for Tind in range(1, self.Nt + 1):
             # Compute L (L^{Tind-1} q)
             P0, Vx0, Vy0, Vz0, BC.BCvar = self.L_operator(P0, Vx0, Vy0, Vz0, BC.BCvar)
 
-            # Add the Taylor term \frac{dt^{Tind}}{Tind!}L^{Tind}q
-            Vx += self.dt**Tind / math.factorial(Tind) * Vx0
-            Vy += self.dt**Tind / math.factorial(Tind) * Vy0
-            Vz += self.dt**Tind / math.factorial(Tind) * Vz0
-            P += self.dt**Tind / math.factorial(Tind) * P0
+            print(f"check before, P0 ID {id(P0)}")  # used for debugging
+
+            P0 *= self.dt / Tind
+            Vx0 *= self.dt / Tind
+            Vy0 *= self.dt / Tind
+            Vz0 *= self.dt / Tind
+            print(f"check after, P0 ID {id(P0)}")  # used for debugging
+
+            P += P0
+            Vx += Vx0
+            Vy += Vy0
+            Vz += Vz0
 
             for index, paras in enumerate(BC.BCpara):
                 for polekey in paras:
                     if polekey == "RP":
-                        BC.BCvar[index]["PHI"] += (
-                            self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["phi"]
-                        )
+                        BC.BCvar[index]["phi"] *= self.dt / Tind
+                        BC.BCvar[index]["PHI"] += BC.BCvar[index]["phi"]
                     elif polekey == "CP":
-                        BC.BCvar[index]["KEXI1"] += (
-                            self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["kexi1"]
-                        )
-                        BC.BCvar[index]["KEXI2"] += (
-                            self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["kexi2"]
-                        )
+                        BC.BCvar[index]["kexi1"] *= self.dt / Tind
+                        BC.BCvar[index]["KEXI1"] += BC.BCvar[index]["kexi1"]
+                        BC.BCvar[index]["kexi2"] *= self.dt / Tind
+                        BC.BCvar[index]["KEXI2"] += BC.BCvar[index]["kexi2"]
