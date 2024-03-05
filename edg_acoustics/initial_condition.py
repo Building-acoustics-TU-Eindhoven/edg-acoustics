@@ -31,7 +31,7 @@ class InitialCondition(abc.ABC):
 
     @abc.abstractmethod
     def Pinit(self, xyz: numpy.ndarray):
-        """Setup initial condition for pressure."""  # If a method or function has a docstring but no other code, the docstring itself suffices for the syntactical requirement of a code block, making pass unnecessary.
+        """Setup initial condition for pressure."""
 
     @abc.abstractmethod
     def VXinit(self, xyz: numpy.ndarray):
