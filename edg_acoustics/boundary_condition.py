@@ -1,6 +1,6 @@
 """
 ``edg_acoustics.boundary_condition``
-======================
+====================================
 
 The edg_acoustics boundary_condition  provide more necessary functionalities 
 (based upon :mod:`edg_acoustics.acoustics_simulation`) to setup boundary condition for a specific scenario.
@@ -12,7 +12,7 @@ the main :mod:`edg_acoustics` namespace rather than in :mod:`edg_acoustics.bound
 Functions and classes present in :mod:`edg_acoustics.boundary_condition` are listed below.
 
 Setup Boundary Condition
----------------
+------------------------
    BoundaryCondition
 """
 
@@ -174,7 +174,7 @@ class BoundaryCondition(abc.ABC):
 class AbsorbBC(BoundaryCondition):
     """Setup absorptiveboundary condition of a DG acoustics simulation for a specific scenario.
 
-    :class:`.BoundaryCondition` is used to load the boundary condition parameters, determine the time step size.
+    :class:`.AbsorbBC` is used to load the boundary condition parameters, determine the time step size.
 
     Args:
         BCnode (list[dict]): List of boundary map nodes, each element being a dictionary with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)].
@@ -191,8 +191,9 @@ class AbsorbBC(BoundaryCondition):
         freq_max (float): maximum resolvable frequency of the simulation. <default>: edg_acoustics.FREQ_MAX
 
     Raises:
-        ValueError: If BCpara.keys() is not present in the acoustics_simulation.BCnode.[index]['label'], an error is raised.
+        AssertionError: If BCpara.[index]['label'] is not present in the acoustics_simulation.BCnode.[index]['label'], an error is raised.
             If a label is present in the acoustics_simulation.BCnode.[index]['label'] but not in BCpara, an error is raised.
+            If the labels in BCpara and BCnode are not the same, an error is raised.
 
     Attributes:
         BCpara (list [dict]): a list of boundary conditon parameters read from the user input.
@@ -203,13 +204,6 @@ class AbsorbBC(BoundaryCondition):
                 is stored in the first row and last column.
                 BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
                 i.e., all boundary conditions in the simulation must have an associated boundary condition parameters.
-
-
-
-    Example:
-        An element of this class can be initialized in the following way
-
-
     """
 
     def __init__(self, BCnode: list[dict], BCpara: list[dict], freq_max: float = FREQ_MAX):
