@@ -1,0 +1,8 @@
+#Configure Pylint to check for Google Style docstrings. 
+[MAIN]
+load-plugins=pylint.extensions.docparams,pylint.extensions.docstyle
+max-line-length=100
+[FORMAT]
+default-docstring-type = google
+
+

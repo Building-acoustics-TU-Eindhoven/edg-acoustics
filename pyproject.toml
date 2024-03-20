@@ -19,3 +19,15 @@ skip_missing_interpreters = true
 commands = pytest
 extras = dev
 """
+
+[tool.pylint.parameter_documentation]
+accept-no-param-doc = true
+
+accept-no-raise-doc = true
+
+accept-no-return-doc = true
+
+accept-no-yields-doc = true
+
+# Possible choices: ['sphinx', 'epytext', 'google', 'numpy', 'default']
+default-docstring-type = "google"
