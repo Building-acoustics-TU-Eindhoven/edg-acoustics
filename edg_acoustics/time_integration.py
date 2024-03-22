@@ -1,16 +1,7 @@
-"""
-``edg_acoustics.time_integration``
-==================================
+""" This module contains the abstract base class for time integrators and the implementation of the Taylor-series time integration scheme.
 
-The edg_acoustics time_integration ***** UPDATE ****  provide more necessary functionalities 
-(based upon :mod:`edg_acoustics.acoustics_simulation`) 
-to setup initial condition for a specific scenario.
-
-Functions and classes present in :mod:`edg_acoustics.initial_condition` are listed below.
-
-Setup Initial Condition
------------------------
-    InitialCondition
+The edg_acoustics.time_integration provide more necessary functionalities 
+(based upon :mod:`edg_acoustics.acoustics_simulation`) to setup time integration.
 """
 
 from __future__ import annotations
@@ -20,22 +11,21 @@ import abc
 import numpy
 import edg_acoustics
 
-__all__ = ["TimeIntegrator", "CFL_Default"]
+__all__ = ["TimeIntegrator", "TSI_TI", "CFL_Default"]
 
 CFL_Default = 0.5
+"""float: Default value of the CFL number for time integration schemes."""
 
 
 class TimeIntegrator(abc.ABC):
-    """
-    Abstract base class for time integrators.
-    """
+    """Abstract base class for time integrators."""
 
     @abc.abstractmethod
     def __init__(self):
         pass
 
     @abc.abstractmethod
-    def step_dt_new(
+    def step_dt(
         self,
         P: None,
         Vx: None,
@@ -43,36 +33,35 @@ class TimeIntegrator(abc.ABC):
         Vz: None,
         BC: None,
     ):
-        """
-        Takes the pressure, velocity at the time T and evolves it to time T + dt.
-        """
+        """Takes the pressure, velocity at the time T and evolves it to time T + dt."""
         # P0 := P(T)
         # P := P(T + dt)
         # the same for all the other variables
 
 
 class TSI_TI(TimeIntegrator):
-    """
-    class for time integrator of Taylor-series time integration scheme.
+    """Class for time integrator of Taylor-series time integration scheme.
 
     :class:`.TSI_TI` is used to evolve the pressure and velocity at the time T to time T + dt, based on the Taylor-series time integration scheme.
 
     Args:
-    L_operator (typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]]): the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
-    dtscale (float): the time step scale
-    Nt (int): the order of the time integration scheme.
-    CFL (float): the CFL number
+        L_operator (typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]]): the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
+        dtscale (float): the time step scale based on the mesh size measure
+        Nt (int): the order of the time integration scheme.
+        CFL (float): the CFL number
 
     Attributes:
-    L_operator (typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]]): the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
-    Nt (int): the order of the time integration scheme.
-    CFL (float): the CFL number
-    dt (float): the time step
+        L_operator (typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]]): the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
+        Nt (int): the order of the time integration scheme.
+        CFL (float): the CFL number
+        dt (float): the time step
     """
 
     def __init__(
         self,
-        L_operator: typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]],
+        L_operator: typing.Callable[
+            [numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]
+        ],
         dtscale: float,
         Nt: int,
         CFL: float = CFL_Default,
@@ -83,7 +72,7 @@ class TSI_TI(TimeIntegrator):
         self.CFL = CFL
         self.dt = CFL * dtscale
 
-    def step_dt_new(
+    def step_dt(
         self,
         P: numpy.ndarray,
         Vx: numpy.ndarray,
@@ -91,8 +80,14 @@ class TSI_TI(TimeIntegrator):
         Vz: numpy.ndarray,
         BC: edg_acoustics.AbsorbBC,
     ):
-        """
-        Takes the pressure, velocity at the time T and evolves it to time T + dt.
+        """Takes the pressure, velocity at the time T and evolves/updates them to time T + dt.
+
+        Args:
+            P (numpy.ndarray): the pressure at the time T, will be updated to the pressure at the time T + dt
+            Vx (numpy.ndarray): the x-component of the velocity at the time T, will be updated to the x-component of the velocity at the time T + dt
+            Vy (numpy.ndarray): the y-component of the velocity at the time T, will be updated to the y-component of the velocity at the time T + dt
+            Vz (numpy.ndarray): the z-component of the velocity at the time T, will be updated to the z-component of the velocity at the time T + dt
+            BC (edg_acoustics.AbsorbBC): the boundary condition object
         """
         # Takes the pressure, velocity, and BCvar at the time T and evolves it to time T + dt
         # BC(edg_acoustics.BoundaryCondition) object neesds to be passed as a reference since we need to access the BCpara attribute
