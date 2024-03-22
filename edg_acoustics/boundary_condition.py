@@ -1,28 +1,20 @@
-"""
-``edg_acoustics.boundary_condition``
-====================================
+""" This module provides boundary condition functionalities for the edg_acoustics package.
 
-The edg_acoustics boundary_condition  provide more necessary functionalities 
+The edg_acoustics.boundary_condition provide more necessary functionalities 
 (based upon :mod:`edg_acoustics.acoustics_simulation`) to setup boundary condition for a specific scenario.
 
-Please note that the most-used mesh functions and classes in edg_acoustics are present in
-the main :mod:`edg_acoustics` namespace rather than in :mod:`edg_acoustics.boundary_condition`.  These are:
-:class:`.BoundaryCondition`, and :func:`.some_function`.
-
-Functions and classes present in :mod:`edg_acoustics.boundary_condition` are listed below.
-
-Setup Boundary Condition
-------------------------
-   BoundaryCondition
+Please note that most of used mesh functions and classes in edg_acoustics are present in the main :mod:`edg_acoustics` namespace 
+rather than in :mod:`edg_acoustics.boundary_condition`. 
 """
 
 from __future__ import annotations
 import abc
 import numpy
 
-__all__ = ["BoundaryCondition", "FREQ_MAX"]
+__all__ = ["BoundaryCondition", "AbsorbBC", "FREQ_MAX"]
 
 FREQ_MAX = 2e3  # maximum resolvable frequency
+"""float: maximum resolvable frequency."""
 
 
 class BoundaryCondition(abc.ABC):
@@ -38,30 +30,31 @@ class BoundaryCondition(abc.ABC):
         """Initiate ADE variables, normal velocity, characteristic waves (outgoing and incoming).
 
         Args:
-            BCpara (list [dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary
+            BCpara (list[dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary
                 with keys (values) ['label'(int),'RI'(float),'RP'(numpy.ndarray),'CP'(numpy.ndarray)].
-                'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\inf`.
+                'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\infty`.
                 'RP' refers to real pole pairs, i.e., :math:`A` (stored in 1st row), :math:`\\zeta` (stored in 2nd row).
                 'CP' refers to complex pole pairs, i.e., :math:`B` (stored in 1st row), :math:`C` (stored in 2nd row),
-                     :math:`\\alpha` (stored in 3rd row), :math:`\\beta`(stored in 4th row).
+                :math:`\\alpha` (stored in 3rd row), :math:`\\beta` (stored in 4th row).
+
+                More details about the multi-pole model parameters and boundary condition can be found in reference https://doi.org/10.1121/10.0001128.
+
                 BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
                 i.e., all boundary conditions in the simulation must have an associated boundary condition parameters.
+
             BCnode (list[dict]): List of boundary map nodes, each element being a dictionary
-                with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)].
+                with keys (values) ['label' (int),'map' (numpy.ndarray),'vmap' (numpy.ndarray)].
 
         Returns:
             BCvar (list [dict]): a list of ADE variables. Each element corresponds to one type of BC, and is a dictionary
                 with potential keys ['label', 'vn', 'ou', 'in', 'phi', 'PHI', 'kexi1', 'kexi2', 'KEXI1', 'KEXI2'].
-                More details about the multi-pole model parameters and boundary condition can be found in reference https://doi.org/10.1121/10.0001128.
-                All values are stored rowwise in the numpy.array BCpara[BC_label], with :math:`\\zeta_i` occupying the first row.
-                is stored in the first row and last column.
-                BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
-                i.e., all boundary conditions in the simulation must have an associated boundary condition parameters.
         """
         BCvar = []
         for index, paras in enumerate(BCpara):
             BCvar.append({"label": paras["label"]})
-            BCvar[index].update({key: numpy.zeros(BCnode[index]["map"].shape) for key in ["vn", "ou", "in"]})
+            BCvar[index].update(
+                {key: numpy.zeros(BCnode[index]["map"].shape) for key in ["vn", "ou", "in"]}
+            )
             for polekey in paras:
                 if polekey == "RP":
                     BCvar[index].update(
@@ -89,25 +82,36 @@ class BoundaryCondition(abc.ABC):
         Also, to satisfy the causality and reality conditions, multi-pole model parameters :math:`\\zeta_i` (stored in first row of
         numpy.array BCpara[BC_label] need to be positive.
         To satisfy the passivity condition, the magnitude of the reflection coefficient from the multi-pole model need to be smaller than 1,
-        that is, :math:`|R(\\omega)|\\leq 1', where :math:`R(\\omega)=R_\\infty+\\sum_{k=1}^{S}\\frac{A_k}{\\zeta_k+\\mathrm{i}\\omega}'
+        that is, :math:`|R(\\omega)|\\leq 1`, where
+
+        .. math::
+            R(\\omega)\\approx{R}_\\infty+\\sum_{k=1}^{S}\\frac{A_k}{\\zeta_k+\\mathrm{i}\\omega}+ \\sum_{l=1}^{T} \\frac{1}{2}\\Big( \\frac{B_l-\\mathrm{i}C_l}{\\alpha_l-\\mathrm{i}\\beta_l+\\mathrm{i}\\omega}+\\frac{B_l+\\mathrm{i}C_l}{\\alpha_l+\\mathrm{i}\\beta_l+\\mathrm{i}\\omega} \\Big)
 
 
         Args:
             BCnode (list[dict]): List of boundary map nodes, each element being a dictionary
-                with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)].
-            BCpara (list [dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary
+                with keys (values) ['label' (int),'map' (numpy.ndarray),'vmap' (numpy.ndarray)].
+
+            BCpara (list[dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary
                 with keys (values) ['label'(int),'RI'(float),'RP'(numpy.ndarray),'CP'(numpy.ndarray)].
-                'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\inf`.
+                'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\infty`.
                 'RP' refers to real pole pairs, i.e., :math:`A` (stored in 1st row), :math:`\\zeta` (stored in 2nd row).
-                'CP' refers to complex pole pairs, i.e., :math:`B` (stored in 1st row), :math:`C` (stored in 2nd row),
-                     :math:`\\alpha` (stored in 3rd row), :math:`\\beta`(stored in 4th row).
+                'CP' refers to complex pole pairs, i.e., :math:`B` (stored in 1st row), :math:`C` (stored in 2nd row), :math:`\\alpha` (stored in 3rd row), :math:`\\beta` (stored in 4th row).
+
                 More details about the multi-pole model parameters and boundary condition can be found in reference https://doi.org/10.1121/10.0001128.
+
                 BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
                 i.e., all boundary conditions in the simulation must have an associated boundary condition parameters.
-            freq_max (float): maximum resolvable frequency of the simulation. <default>: edg_acoustics.FREQ_MAX
 
-        Returns:
-            is_compatible (bool): a flag specifying if BCpara is compatible with the simulation object and satisfies the conditions or not.
+            freq_max (float): maximum resolvable frequency of the simulation. <default>: :attr:`edg_acoustics.boundary_condition.FREQ_MAX`
+
+        Raises:
+            AssertionError: If BCpara.[index]['label'] is not present in the acoustics_simulation.BCnode.[index]['label'], an error is raised.
+                If a label is present in the acoustics_simulation.BCnode.[index]['label'] but not in BCpara, an error is raised.
+                If the labels in BCpara and BCnode are not the same, an error is raised.
+            AssertionError: If the reflection coefficient is not smaller than 1, an error is raised.
+            AssertionError: If the number of BC types is not the same in the BC_labels and BC_para, an error is raised.
+            AssertionError: If the causality and reality conditions are not met, an error is raised.
         """
         omega = numpy.arange(1.0, freq_max)
 
@@ -128,6 +132,25 @@ class BoundaryCondition(abc.ABC):
             assert (
                 numpy.abs(AbsorbBC.compute_Re(omega, paras)) <= 1.0
             ).all(), "[edg_acoustics.BoundaryCondition] All reflection coefficient must be smaller than 1"
+
+            for polekey in paras:
+                if polekey == "RP":
+                    zeta = paras["RP"][1, :]
+                    assert (zeta > 0).all(), (
+                        "[edg_acoustics.BoundaryCondition] To satisfy causality and reality conditions, "
+                        "all real poles must have positive damping ratio, physical boundary "
+                        + str(paras["label"])
+                        + " has failed the physical admissbility test"
+                    )
+                elif polekey == "CP":
+                    alpha = paras["CP"][2, :]
+                    beta = paras["CP"][3, :]
+                    assert ((alpha > 0) & (beta > 0)).all(), (
+                        "[edg_acoustics.BoundaryCondition] To satisfy causality and reality conditions, "
+                        "all complex poles must have positive damping ratio, physical boundary "
+                        + str(paras["label"])
+                        + " has failed the physical admissbility test"
+                    )
             print(
                 "boundary parameter with label: "
                 + str(paras["label"])
@@ -172,38 +195,29 @@ class BoundaryCondition(abc.ABC):
 
 
 class AbsorbBC(BoundaryCondition):
-    """Setup absorptiveboundary condition of a DG acoustics simulation for a specific scenario.
+    """Setup absorptive boundary condition of a DG acoustics simulation for a specific scenario.
 
-    :class:`.AbsorbBC` is used to load the boundary condition parameters, determine the time step size.
+    :class:`.AbsorbBC` is used to load the boundary condition parameters, and to initiate the ADE variables.
 
     Args:
-        BCnode (list[dict]): List of boundary map nodes, each element being a dictionary with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)].
-            From the edg_acoustics.AcousticsSimulation class that contains the spatial discretisation.
-        BCpara (list [dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary
+        BCnode (list[dict]): List of boundary map nodes, each element being a dictionary with keys (values) ['label' (int),'map' (numpy.ndarray),'vmap' (numpy.ndarray)].
+        BCpara (list[dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary
             with keys (values) ['label'(int),'RI'(float),'RP'(numpy.ndarray),'CP'(numpy.ndarray)].
-            'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\inf`.
+            'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\infty`.
             'RP' refers to real pole pairs, i.e., :math:`A` (stored in 1st row), :math:`\\zeta` (stored in 2nd row).
-                'CP' refers to complex pole pairs, i.e., :math:`B` (stored in 1st row), :math:`C` (stored in 2nd row),
-                     :math:`\\alpha` (stored in 3rd row), :math:`\\beta`(stored in 4th row).
+            'CP' refers to complex pole pairs, i.e., :math:`B` (stored in 1st row), :math:`C` (stored in 2nd row), :math:`\\alpha` (stored in 3rd row), :math:`\\beta` (stored in 4th row).
+
+            More details about the multi-pole model parameters and boundary condition can be found in reference https://doi.org/10.1121/10.0001128.
+
             BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
             i.e., all boundary conditions in the simulation must have an associated boundary condition parameters.
 
-        freq_max (float): maximum resolvable frequency of the simulation. <default>: edg_acoustics.FREQ_MAX
-
-    Raises:
-        AssertionError: If BCpara.[index]['label'] is not present in the acoustics_simulation.BCnode.[index]['label'], an error is raised.
-            If a label is present in the acoustics_simulation.BCnode.[index]['label'] but not in BCpara, an error is raised.
-            If the labels in BCpara and BCnode are not the same, an error is raised.
+        freq_max (float): maximum resolvable frequency of the simulation. <default>: :attr:`edg_acoustics.boundary_condition.FREQ_MAX`
 
     Attributes:
         BCpara (list [dict]): a list of boundary conditon parameters read from the user input.
         BCvar (list [dict]): a list of ADE variables. Each element corresponds to one type of BC, and is a dictionary
                 with potential keys ['label', 'vn', 'ou', 'in', 'phi', 'PHI', 'kexi1', 'kexi2', 'KEXI1', 'KEXI2'].
-                More details about the multi-pole model parameters and boundary condition can be found in reference https://doi.org/10.1121/10.0001128.
-                All values are stored rowwise in the numpy.array BCpara[BC_label], with :math:`\\zeta_i` occupying the first row.
-                is stored in the first row and last column.
-                BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
-                i.e., all boundary conditions in the simulation must have an associated boundary condition parameters.
     """
 
     def __init__(self, BCnode: list[dict], BCpara: list[dict], freq_max: float = FREQ_MAX):
