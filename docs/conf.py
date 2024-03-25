@@ -91,3 +91,10 @@ intersphinx_mapping = {
 
 # -- Options for Napoleon
 napoleon_custom_sections = [("Returns", "params_style")]
+
+
+html_static_path = ["./"]
+html_css_files = [
+    "custom.css",
+]
+# html_logo = "_static/logo.png"
