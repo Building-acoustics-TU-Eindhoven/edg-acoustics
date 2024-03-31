@@ -1,15 +1,6 @@
-"""
-``edg_acoustics.initial_condition``
-======================
+""" This module provides initial condition functionalities for the edg_acoustics package.
 
-The edg_acoustics initial_condition  provide more necessary functionalities 
-(based upon :mod:`edg_acoustics.acoustics_simulation`) to setup initial condition for a specific scenario.
-
-Functions and classes present in :mod:`edg_acoustics.initial_condition` are listed below.
-
-Setup Initial Condition
----------------
-   InitialCondition
+The current version of edg_acoustics.initial_condition provides monopole source initial condition.
 """
 
 from __future__ import annotations
@@ -47,15 +38,15 @@ class InitialCondition(abc.ABC):
 
 
 class Monopole_IC(InitialCondition):
-    """Setup initial condition of a DG acoustics simulation for a specific scenario.
+    """Setup a monopole source for a specific scenario.
 
-    :class:`.InitialCondition` is used to setup monopple source initial condition.
+    :class:`.Monopole_IC` is used to setup monopple source initial condition.
 
     Args:
-        xyz (numpy.ndarray): ``[3, Np, N_tets]``the physical space coordinates :math:`(x, y, z)` of the collocation points of each
+        xyz (numpy.ndarray): ``[3, Np, N_tets]`` the physical space coordinates :math:`(x, y, z)` of the collocation points of each
                 element of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
                 ``xyz[2]`` contains the z-coordinates.
-        source_xyz (numpy.ndarray): an (3, ) array containing the physical coordinates of the monopole source.
+        source_xyz (numpy.ndarray): an (3,) array containing the physical coordinates of the monopole source.
         halfwidth (float): half-bandwidth of the initial Gaussian pulse.
     """
 
