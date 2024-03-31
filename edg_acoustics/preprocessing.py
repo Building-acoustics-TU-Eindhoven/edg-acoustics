@@ -1,53 +1,25 @@
-"""
-``edg_acoustics.preprocessing``
-======================
-
-The edg_acoustics preprocessing  provide more necessary functionalities 
-(based upon :mod:`edg_acoustics.acoustics_simulation`) to setup/precalculate simulation constants for a specific scenario.
-
-Functions and classes present in :mod:`edg_acoustics.preprocessing` are listed below.
-
-Setup Constants
----------------
-   Flux
+"""This module provides preprocessing functionalities for the edg_acoustics package.
 """
 
 from __future__ import annotations
-import abc
 import numpy
 
 
-__all__ = ["Flux", "UpwindFlux"]
+__all__ = ["UpwindFlux"]
 
 
-class Flux(abc.ABC):
-    """abstract base class for fluxes."""
-
-    @abc.abstractmethod
-    def __init__(self):
-        pass
-
-    @abc.abstractmethod
-    def FluxP(self):
-        """abstract method for pressure flux."""
-
-    @abc.abstractmethod
-    def FluxVx(self):
-        """abstract method for flux of velocity in x-direction."""
-
-    @abc.abstractmethod
-    def FluxVy(self):
-        """abstract method for flux of velocity in y-direction."""
-
-    @abc.abstractmethod
-    def FluxVz(self):
-        """abstract method for flux of velocity in z-direction."""
-
-
-class UpwindFlux(Flux):
-    """Setup constants for upwind fluxes."""
+class UpwindFlux:
+    """Calculation of upwind fluxes."""
 
     def __init__(self, rho0: float, c0: float, n_xyz: numpy.ndarray):
+        """Setup constants for upwind fluxes.
+
+        Args:
+            rho0 (float): The reference density.
+            c0 (float): The reference speed of sound.
+            n_xyz (numpy.ndarray): The array representing the normal vector of the face.
+
+        """
         self.rho0 = rho0
         self.c0 = c0
         self.n_xyz = n_xyz
@@ -71,6 +43,18 @@ class UpwindFlux(Flux):
         dvz: numpy.ndarray,
         dp: numpy.ndarray,
     ):
+        """This method calculates the pressure flux using the given input arrays.
+
+        Args:
+            dvx (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the x-direction.
+            dvy (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the y-direction.
+            dvz (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the z-direction.
+            dp (numpy.ndarray): The array representing jump values across the faces of neighboring elements in pressure.
+
+        Returns:
+            numpy.ndarray: The calculated pressure flux.
+
+        """
         return self.csn1rho * dvx + self.csn2rho * dvy + self.csn3rho * dvz - self.c0 / 2 * dp
 
     def FluxVx(
@@ -80,6 +64,17 @@ class UpwindFlux(Flux):
         dvz: numpy.ndarray,
         dp: numpy.ndarray,
     ):
+        """This method calculates the flux of velocity in x-direction using the given input arrays.
+
+        Args:
+            dvx (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the x-direction.
+            dvy (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the y-direction.
+            dvz (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the z-direction.
+            dp (numpy.ndarray): The array representing jump values across the faces of neighboring elements in pressure.
+
+        Returns:
+            numpy.ndarray: The calculated flux of velocity in x-direction.
+        """
         return self.cn1s * dvx + self.cn1n2 * dvy + self.cn1n3 * dvz + self.n1rho * dp
 
     def FluxVy(
@@ -89,6 +84,17 @@ class UpwindFlux(Flux):
         dvz: numpy.ndarray,
         dp: numpy.ndarray,
     ):
+        """This method calculates the flux of velocity in y-direction using the given input arrays.
+
+        Args:
+            dvx (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the x-direction.
+            dvy (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the y-direction.
+            dvz (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the z-direction.
+            dp (numpy.ndarray): The array representing jump values across the faces of neighboring elements in pressure.
+
+        Returns:
+            numpy.ndarray: The calculated flux of velocity in y-direction.
+        """
         return self.cn1n2 * dvx + self.cn2s * dvy + self.cn2n3 * dvz + self.n2rho * dp
 
     def FluxVz(
@@ -98,4 +104,15 @@ class UpwindFlux(Flux):
         dvz: numpy.ndarray,
         dp: numpy.ndarray,
     ):
+        """This method calculates the flux of velocity in z-direction using the given input arrays.
+
+        Args:
+            dvx (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the x-direction.
+            dvy (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the y-direction.
+            dvz (numpy.ndarray): The array representing jump values across the faces of neighboring elements in velocity in the z-direction.
+            dp (numpy.ndarray): The array representing jump values across the faces of neighboring elements in pressure.
+
+        Returns:
+            numpy.ndarray: The calculated flux of velocity in z-direction.
+        """
         return self.cn1n3 * dvx + self.cn2n3 * dvy + self.cn3s * dvz + self.n3rho * dp
