@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import typing
 import abc
+import math
 import numpy
 import edg_acoustics
 
@@ -125,26 +126,27 @@ class TSI_TI(TimeIntegrator):
                     BC.BCvar[index]["kexi1"] = BC.BCvar[index]["KEXI1"].copy()
                     BC.BCvar[index]["kexi2"] = BC.BCvar[index]["KEXI2"].copy()
 
+        ##########################
         for Tind in range(1, self.Nt + 1):
+            # Compute L (L^{Tind-1} q)
             P0, Vx0, Vy0, Vz0, BC.BCvar = self.L_operator(P0, Vx0, Vy0, Vz0, BC.BCvar)
 
-            P0 *= self.dt / Tind
-            Vx0 *= self.dt / Tind
-            Vy0 *= self.dt / Tind
-            Vz0 *= self.dt / Tind
-
-            P += P0
-            Vx += Vx0
-            Vy += Vy0
-            Vz += Vz0
+            # Add the Taylor term \frac{dt^{Tind}}{Tind!}L^{Tind}q
+            Vx += self.dt**Tind / math.factorial(Tind) * Vx0
+            Vy += self.dt**Tind / math.factorial(Tind) * Vy0
+            Vz += self.dt**Tind / math.factorial(Tind) * Vz0
+            P += self.dt**Tind / math.factorial(Tind) * P0
 
             for index, paras in enumerate(BC.BCpara):
                 for polekey in paras:
                     if polekey == "RP":
-                        BC.BCvar[index]["phi"] *= self.dt / Tind
-                        BC.BCvar[index]["PHI"] += BC.BCvar[index]["phi"]
+                        BC.BCvar[index]["PHI"] += (
+                            self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["phi"]
+                        )
                     elif polekey == "CP":
-                        BC.BCvar[index]["kexi1"] *= self.dt / Tind
-                        BC.BCvar[index]["KEXI1"] += BC.BCvar[index]["kexi1"]
-                        BC.BCvar[index]["kexi2"] *= self.dt / Tind
-                        BC.BCvar[index]["KEXI2"] += BC.BCvar[index]["kexi2"]
+                        BC.BCvar[index]["KEXI1"] += (
+                            self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["kexi1"]
+                        )
+                        BC.BCvar[index]["KEXI2"] += (
+                            self.dt**Tind / math.factorial(Tind) * BC.BCvar[index]["kexi2"]
+                        )
