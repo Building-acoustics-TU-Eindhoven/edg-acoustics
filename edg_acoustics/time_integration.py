@@ -18,11 +18,30 @@ CFL_Default = 0.5
 
 
 class TimeIntegrator(abc.ABC):
-    """Abstract base class for time integrators."""
+    """Base class for time integrators.
 
-    @abc.abstractmethod
-    def __init__(self):
-        pass
+    Args:
+        L_operator (typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]]): the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
+        dtscale (float): the time step scale based on the mesh size measure
+        CFL (float): the CFL number
+
+    Attributes:
+        L_operator (typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]]): the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
+        CFL (float): the CFL number
+        dt (float): the time step size
+    """
+
+    def __init__(
+        self,
+        L_operator: typing.Callable[
+            [numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]
+        ],
+        dtscale: float,
+        CFL: float = CFL_Default,
+    ):
+        self.L_operator = L_operator
+        self.CFL = CFL
+        self.dt = CFL * dtscale
 
     @abc.abstractmethod
     def step_dt(
@@ -47,14 +66,14 @@ class TSI_TI(TimeIntegrator):
     Args:
         L_operator (typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]]): the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
         dtscale (float): the time step scale based on the mesh size measure
-        Nt (int): the order of the time integration scheme.
         CFL (float): the CFL number
+        Nt (int): the order of the time integration scheme.
 
     Attributes:
         L_operator (typing.Callable[[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]]): the function in AcousticSimulation that enables the computation of Lq, given q = [P, Vx, Vy, Vz]
-        Nt (int): the order of the time integration scheme.
         CFL (float): the CFL number
-        dt (float): the time step
+        dt (float): the time step size
+        Nt (int): the order of the time integration scheme.
     """
 
     def __init__(
@@ -63,14 +82,12 @@ class TSI_TI(TimeIntegrator):
             [numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray, list]
         ],
         dtscale: float,
-        Nt: int,
         CFL: float = CFL_Default,
+        **kwargs,
     ):
-
-        self.L_operator = L_operator
-        self.Nt = Nt
-        self.CFL = CFL
-        self.dt = CFL * dtscale
+        super().__init__(L_operator, dtscale, CFL)
+        self.Nt = kwargs["Nt"]
+        print("TSI_TI initialized.")
 
     def step_dt(
         self,
