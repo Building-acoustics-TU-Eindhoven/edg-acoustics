@@ -1,11 +1,11 @@
-"""Documentation about edg_acoustics"""
+"""Documentation about edg_acoustics (in init.py file)."""
 
 import logging
 from .acoustics_simulation import AcousticsSimulation
 from .mesh import Mesh
 from .boundary_condition import BoundaryCondition, AbsorbBC
 from .initial_condition import InitialCondition, Monopole_IC
-from .preprocessing import UpwindFlux
+from .preprocessing import Flux, UpwindFlux
 from .time_integration import TimeIntegrator, TSI_TI
 
 

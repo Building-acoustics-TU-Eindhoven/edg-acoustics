@@ -2,13 +2,38 @@
 """
 
 from __future__ import annotations
+import abc
 import numpy
 
 
-__all__ = ["UpwindFlux"]
+__all__ = ["Flux", "UpwindFlux"]
 
 
-class UpwindFlux:
+class Flux(abc.ABC):
+    """abstract base class for fluxes."""
+
+    @abc.abstractmethod
+    def __init__(self):
+        pass
+
+    @abc.abstractmethod
+    def FluxP(self):
+        """abstract method for pressure flux."""
+
+    @abc.abstractmethod
+    def FluxVx(self):
+        """abstract method for flux of velocity in x-direction."""
+
+    @abc.abstractmethod
+    def FluxVy(self):
+        """abstract method for flux of velocity in y-direction."""
+
+    @abc.abstractmethod
+    def FluxVz(self):
+        """abstract method for flux of velocity in z-direction."""
+
+
+class UpwindFlux(Flux):
     """Calculation of upwind fluxes."""
 
     def __init__(self, rho0: float, c0: float, n_xyz: numpy.ndarray):
