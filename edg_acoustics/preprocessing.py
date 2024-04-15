@@ -34,17 +34,33 @@ class Flux(abc.ABC):
 
 
 class UpwindFlux(Flux):
-    """Calculation of upwind fluxes."""
+    """Calculation of upwind fluxes.
+    Args:
+        rho0 (float): The reference density.
+        c0 (float): The reference speed of sound.
+        n_xyz (numpy.ndarray): The array representing the normal vector of the face.
+
+    Attributes:
+        rho0 (float): see :attr:`edg_acoustics.AcousticsSimulation.rho0`.
+        c0 (float): see :attr:`edg_acoustics.AcousticsSimulation.c0`.
+        n_xyz (numpy.ndarray): see :attr:`edg_acoustics.AcousticsSimulation.n_xyz`.
+        cn1s (numpy.ndarray): precalculated constant for the calculation of the flux of velocity in x-direction.
+        cn2s (numpy.ndarray): precalculated constant for the calculation of the flux of velocity in y-direction.
+        cn3s (numpy.ndarray): precalculated constant for the calculation of the flux of velocity in z-direction.
+        cn1n2 (numpy.ndarray): precalculated constant for the calculation of the flux of velocity.
+        cn1n3 (numpy.ndarray): precalculated constant for the calculation of the flux of velocity.
+        cn2n3 (numpy.ndarray): precalculated constant for the calculation of the flux of velocity.
+        n1rho (numpy.ndarray): precalculated constant for the calculation of the flux of velocity in x-direction.
+        n2rho (numpy.ndarray): precalculated constant for the calculation of the flux of velocity in y-direction.
+        n3rho (numpy.ndarray): precalculated constant for the calculation of the flux of velocity in z-direction.
+        csn1rho (numpy.ndarray): precalculated constant for the calculation of the pressure flux.
+        csn2rho (numpy.ndarray): precalculated constant for the calculation of the pressure flux.
+        csn3rho (numpy.ndarray): precalculated constant for the calculation of the pressure flux.
+
+
+    """
 
     def __init__(self, rho0: float, c0: float, n_xyz: numpy.ndarray):
-        """Setup constants for upwind fluxes.
-
-        Args:
-            rho0 (float): The reference density.
-            c0 (float): The reference speed of sound.
-            n_xyz (numpy.ndarray): The array representing the normal vector of the face.
-
-        """
         self.rho0 = rho0
         self.c0 = c0
         self.n_xyz = n_xyz
