@@ -137,9 +137,9 @@ class AcousticsSimulation:
             - n_xyz[2, :] (numpy.ndarray): nz ``[4*Nfp, N_tets]`` The :math:`z`-component of the outward normal :math:`\\vec{n}`
               at each of the :attr:`Nfp` nodes on each of the 4 facets of each of the :attr:`N_tets` elements.
 
-        vmapM (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for interior values
+        vmapM (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for interior values.
 
-        vmapP (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for exterior values
+        vmapP (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for exterior values.
 
     """
 
@@ -179,35 +179,14 @@ class AcousticsSimulation:
         self.init_local_system()
 
     def init_local_system(self):
-        """Compute local system matrices and local variables.
-
-        Compute quantities associated to reference element and local coordinates, namely:
-            - Reference element collocation nodes
-            - Element collocation nodes (transformation of reference element to each element)
-            - Reference element van der Monde matrix
-            - Reference element mass matrix
-            - Reference element derivative matrices
-
-        Updates:
-            - self.xyz
-            - self.rst (3* Np)
-            - self.V self.inV
-            - self.M
-            - self.Dr, self.Ds, self.Dt
-            - self.Fmask (4*Nfp)
-            - self.lift
-        Args:
-
-        Returns:
-        """
+        """Call the methods to initialise the local system and compute all the attributes of the AcousticsSimulation object."""
 
         self.rst, self.xyz = AcousticsSimulation.compute_collocation_nodes(
             self.mesh.EToV, self.mesh.vertices, self.Nx, dim=self.dim
         )
 
-        # Compute the van der Monde matrix and its inverse
+        # Compute the van der Monde matrix for the basis functions
         self.V = AcousticsSimulation.compute_van_der_monde_matrix(self.Nx, self.rst)
-        # self.inV = numpy.linalg.inv(self.V)
 
         # Compute the derivative matrices
         self.Dr, self.Ds, self.Dt = AcousticsSimulation.compute_derivative_matrix(self.Nx, self.rst)
@@ -246,42 +225,40 @@ class AcousticsSimulation:
     # Static methods ---------------------------------------------------------------------------------------------------
     @staticmethod
     def compute_Np(Nx: int):
-        """Computes the number of collocation nodes for basis of polynomial degree ``Nx``.
+        """Computes the number of collocation nodes for basis of polynomial degree :attr:`Nx`.
 
         Args:
-            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
-                propagation problem.
+            Nx (int): see :attr:`Nx`.
 
         Returns:
-            Np (int): number of collocation nodes in an element.
+            Np (int): see :attr:`Np`.
         """
 
         return int((Nx + 1) * (Nx + 2) * (Nx + 3) / 6)
 
     @staticmethod
     def compute_Nfp(Nx: int):
-        """Computes the number of collocation nodes lying on a face of the elements for basis of polynomial degree ``Nx``.
+        """Computes the number of collocation nodes lying on a face of the elements for basis of polynomial degree :attr:`Nx`.
 
         Args:
-            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
-                propagation problem.
+            Nx (int): see :attr:`Nx`.
 
         Returns:
-            Nfp (int): number of collocation nodes in a face.
+            Nfp (int): see :attr:`Nfp`.
         """
 
         return int((Nx + 1) * (Nx + 2) / 2)
 
     @staticmethod
     def compute_Nx_from_Np(Np: int):
-        """Computes the  polynomial degree ``Nx`` of basis from the number of collocation points.
+        """Computes the  polynomial degree :attr:`Nx` of basis from the number of collocation points :attr:`Np`.
 
         Args:
-            Np (int): number of collocation nodes in an element.
+            Np (int): see :attr:`Np`.
 
 
         Returns:
-            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave propagation problem.
+            Nx (int): see :attr:`Nx`.
         """
         # Since Np is given by:
         #   Np = (Nx + 1)*(Nx + 2)*(Nx + 3)/6
@@ -299,17 +276,13 @@ class AcousticsSimulation:
     @staticmethod
     def check_BC_list(BC_list: dict[str, int], mesh: edg_acoustics.Mesh):
         """Check if BC_list is compatible with mesh.
-
         Given a mesh with a set of boundary conditions specified in mesh.BC_triangles, check if the list of boundary
         conditions specification, BC_list, is compatible. By compatible we mean that all boundary conditions (keys) in
         BC_list exist in mesh.BC_labels, and vice-versa.
 
         Args:
-            mesh (edg_acoustics.Mesh): the mesh object containing the mesh information for the domain discretisation.
-            BC_list (dict[str, int]): a dictionary containing the definition of the boundary
-                conditions that are present in the mesh. BC_list.keys() must contain the same elements as
-                mesh.BC_triangles.keys(), i.e., all boundary conditions in the mesh must have an associated boundary condition
-                definition.
+            mesh (edg_acoustics.Mesh): see :attr:`mesh`.
+            BC_list (dict[str, int]): see :attr:`BC_list`.
 
         Returns:
             is_compatible (bool): a flag specifying if BC_list is compatible with the mesh or not.
@@ -320,33 +293,21 @@ class AcousticsSimulation:
     def compute_collocation_nodes(
         EToV: numpy.ndarray, vertices: numpy.ndarray, Nx: int, dim: int = 3
     ):
-        """Compute reference element (rst) coordinates of collocation points and the physical domain (xyz) coordinates
-        self.dim and maximum polynomial degree to interpolate over these nodes (determines the number of nodes).
-        for each element.These are so called Fekete points (low, close to optimal, Lebesgue constant) on simplices of dimension
-        self.rst = modepy.warp_and_blend_nodes(self.dim, self.Nx)
+        """Compute reference element :math:`(r, s, t)` coordinates of collocation points :attr:`rst` and the physical domain :attr:`xyz` coordinates
+        for each element.
 
         Args:
-            EToV (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
-               tetrahedra that make up the mesh.
-            vertices (numpy.ndarray): An (M x self.N_vertices) array containing the M coordinates of the self.N_vertices
-                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
-                describes an M-dimensional domain.
-            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
-                propagation problem.
-            dim (int): the geometric dimension of the space where the acoustic problem is solved. Always set to 3.
+            EToV (numpy.ndarray): See :any:`edg_acoustics.Mesh.EToV`.
+            vertices (numpy.ndarray): see :any:`edg_acoustics.Mesh.vertices`.
+            Nx (int): see :attr:`Nx`.
+            dim (int): see :attr:`dim`.
 
         Returns:
-            rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points. ``xyz``
-            are obtained by mapping for each element the ``rst`` coordinates of the reference element into the physical
-            domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates, ``rst[2]`` contains the t-coordinates.
+            rst (numpy.ndarray): see :attr:`rst`.
 
-            xyz (numpy.ndarray): ``[3, Np, N_tets]``the physical space coordinates :math:`(x, y, z)` of the collocation points of each
-            element of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
-                ``xyz[2]`` contains the z-coordinates.
+            xyz (numpy.ndarray): see :attr:`xyz`.
         """
 
-        # Compute reference element (rst) coordinates of collocation points and the physical domain (xyz) coordinates
-        # for each element.
         # These are so called Fekete points (low, close to optimal, Lebesgue constant) on simplices of dimension
         # self.dim and maximum polynomial degree to interpolate over these nodes (determines the number of nodes).
         rst = modepy.warp_and_blend_nodes(dim, Nx)
@@ -397,26 +358,18 @@ class AcousticsSimulation:
 
     @staticmethod
     def compute_van_der_monde_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3) -> numpy.ndarray:
-        """Compute the van der Monde matrix.
-
-        Computes the van der Monde matrix for an orthonormal basis on the reference simplex. This polynomial basis
-        can exactly represent polynomials up to degree ``Nx``.
-
-        Consider the set of :math:`n` 3D nodes, with the coordinates of each node :math:`i` equal to
-        :math:`(r_{i}, s_{i}, t_{i})`, in ``rst``, and the set of :math:`m` orthonormal basis functions, the van der
-        Monde matrix will be :math:`V_{i,j} = f_{j}(r_{i}, s_{i}, t_{i})`.
+        """Compute vandermonde matrix of the orthonormal basis functions on the reference simplex element. Polynomial basis
+            can exactly represent polynomials up to degree :attr:`Nx`. Consider the set of :attr:`~.AcousticsSimulation.Np` 3D nodes, with the coordinates of each node :math:`i` equal to
+            :math:`(r_{i}, s_{i}, t_{i})`, in :attr:`.rst`, and the set of :math:`m` orthonormal basis functions,
+            the vandermonde matrix will be :math:`V_{i,j} = f_{j}(r_{i}, s_{i}, t_{i})`.
 
         Args:
-            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
-                propagation problem.
-            rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
-                ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
-                the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
-                ``rst[2]`` contains the t-coordinates.
-            dim (int): the geometric dimension of the space where the acoustic problem is solved. Always set to 3.
+            Nx (int): see :attr:`Nx`.
+            rst (numpy.ndarray): see :attr:`rst`.
+            dim (int): see :attr:`dim`.
 
         Returns:
-            V (numpy.ndarray): the reference element van der Monde matrix of the orthonormal basis functions, :math:`f_{j}`, on the 3D simplices (elements of the mesh), i.e., :math:`V_{i,j} = f_{j}(r_{i}, s_{i}, t_{i})`.
+            V (numpy.ndarray): see :attr:`V`.
         """
         # Compute the orthonormal polynomial basis of degree Nx and geometric dimension dim
         simplex_basis = modepy.simplex_onb(dim, Nx)
@@ -426,19 +379,16 @@ class AcousticsSimulation:
 
     @staticmethod
     def compute_derivative_matrix(Nx: int, rst: numpy.ndarray, dim: int = 3):
-        """Compute the derivative matrix.
+        """Compute the derivative matrix on the reference element.
 
         Args:
-            Nx (int): the polynomial degree of the approximating DG finite element space used to solve the acoustic wave
-                propagation problem.
-            rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
-                ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
-                the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
-                ``rst[2]`` contains the t-coordinates.
-            dim (int): the geometric dimension of the space where the acoustic problem is solved. Always set to 3.
-
+            Nx (int): see :attr:`Nx`.
+            rst (numpy.ndarray): see :attr:`rst`.
+            dim (int): see :attr:`dim`.
         Returns:
-            Return matrices carrying out differentiation on nodal values in the (r,s,t) unit directions.
+            Dr (numpy.ndarray): see :attr:`Dr`.
+            Ds (numpy.ndarray): see :attr:`Ds`.
+            Dt (numpy.ndarray): see :attr:`Dt`.
         """
 
         # Compute the orthonormal polynomial basis of degree Nx and geometric dimension dim
@@ -456,19 +406,16 @@ class AcousticsSimulation:
     # ------------------------------------------------------------------------------------------------------------------
     @staticmethod
     def compute_Fmask(rst: numpy.ndarray, node_tol: float):
-        """Find all the ``Nfp`` face nodes that lie on each surface.
+        """Find all the :attr:``Nfp`` face nodes that lie on each surface.
 
         Args:
-            rst (numpy.ndarray): the reference element coordinates :math:`(r, s, t)` of the collocation points.
-                ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
-                ``rst[2]`` contains the t-coordinates.
-            node_tol (float): the tolerance used to determine if a node lies on a facet.
+            rst (numpy.ndarray): see :attr:`rst`.
+            node_tol (float): see :attr:`node_tolerance`.
 
         Returns:
-            Fmask (numpy.ndarray): ``[4, Nfp]`` an array containing the local indices of the ``Nfp`` nodes on each of the four faces of
-                the reference element.
+            Fmask (numpy.ndarray): see :attr:`Fmask`.
         """
-        Np = rst.shape[1]  # get the number of collocation points
+        Np = rst.shape[1]
         Nx = AcousticsSimulation.compute_Nx_from_Np(
             Np
         )  # get the polynomial degree of approximation
@@ -489,16 +436,11 @@ class AcousticsSimulation:
         """Compute the lift matrix.
 
         Args:
-            V (numpy.ndarray): ``[Np, Np]`` Vandermonde matrix for basis of degree ``Nx``.
-            rst (numpy.ndarray): ``[3, Np]`` the reference element coordinates :math:`(r, s, t)` of the ``Np`` collocation points
-                associated to a polynomial basis of degree ``Nx``.
-                ``xyz`` are obtained by mapping for each element the ``rst`` coordinates of the reference element into
-                the physical domain. ``rst[0]`` contains the r-coordinates, ``rst[1]`` contains the s-coordinates,
-                ``rst[2]`` contains the t-coordinates.
-            Fmask (numpy.ndarray): ``[4, Nfp]`` an array containing the local indices of the ``Nfp`` nodes on each of the four faces of
-                the reference element.
+            V (numpy.ndarray): see :attr:`V`.
+            rst (numpy.ndarray): see :attr:`rst`.
+            Fmask (numpy.ndarray): see :attr:`Fmask`.
         Returns:
-            Return lift (numpy.ndarray): ``[Np, 4*Nfp]`` an array containing the product of inverse of the mass matrix (3D) with the face-mass matrices (2D)
+            lift (numpy.ndarray): see :attr:`lift`.
         """
         Np = V.shape[1]  # get the number of collocation points
         Nx = AcousticsSimulation.compute_Nx_from_Np(
@@ -547,41 +489,14 @@ class AcousticsSimulation:
         """Compute the metric elements for the local mappings of the elements.
 
         Args:
-            xyz (numpy.ndarray): ``[3, Np, N_tets]`` the physical space coordinates :math:`(x, y, z)` of the collocation points of each
-                of the N_tets elements of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
-                 ``xyz[2]`` contains the z-coordinates.
-            Dr (numpy.ndarray): ``[Np, Np]`` the differentiation matrix on the collation points implementing the discrete version of
-                :math:`\\frac{\\partial}{\\partial r}`.
-            Ds (numpy.ndarray): ``[Np, Np]`` the differentiation matrix on the collation points implementing the discrete version of
-                :math:`\\frac{\\partial}{\\partial s}`.
-            Dt (numpy.ndarray): ``[Np, Np]`` the differentiation matrix on the collation points implementing the discrete version of
-                :math:`\\frac{\\partial}{\\partial t}`.
+            xyz (numpy.ndarray): see :attr:`xyz`.
+            Dr (numpy.ndarray): see :attr:`Dr`.
+            Ds (numpy.ndarray): see :attr:`Ds`.
+            Dt (numpy.ndarray): see :attr:`Dt`.
 
         Returns:
-            (tuple): tuple containing:
-                rst_xyz (numpy.ndarray): ``[3, 3, Np, N_tets]`` The derivative of the local coordinates :math:`R = (r, s, t)` with
-                    respect to the physical coordinates :math:`X = (x, y, z)`, i.e., :math:`\\frac{\\partial R}{\\partial X}`,
-                    at the collocation nodes. Specifically:
-                        rst_xyz[0, 0]: rx ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                            coordinates :math:`x`, i.e., :math:`\\frac{\\partial r}{\\partial x}`, at the collocation nodes.
-                        rst_xyz[1, 0]: sx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                            coordinates :math:`x`, i.e., :math:`\\frac{\\partial s}{\\partial x}`, at the collocation nodes.
-                        rst_xyz[2, 0]: tx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                            coordinates :math:`x`, i.e., :math:`\\frac{\\partial t}{\\partial x}`, at the collocation nodes.
-                        rst_xyz[0, 1]: ry (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                            coordinates :math:`y`, i.e., :math:`\\frac{\\partial r}{\\partial y}`, at the collocation nodes.
-                        rst_xyz[1, 1]: sy (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                            coordinates :math:`y`, i.e., :math:`\\frac{\\partial s}{\\partial y}`, at the collocation nodes.
-                        rst_xyz[2, 1]: ty (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                            coordinates :math:`y`, i.e., :math:`\\frac{\\partial t}{\\partial y}`, at the collocation nodes.
-                        rst_xyz[0, 2]: rz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                            coordinates :math:`z`, i.e., :math:`\\frac{\\partial r}{\\partial z}`, at the collocation nodes.
-                        rst_xyz[1, 2]: sz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                            coordinates :math:`z`, i.e., :math:`\\frac{\\partial s}{\\partial z}`, at the collocation nodes.
-                        rst_xyz[2, 2]: tz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                            coordinates :math:`z`, i.e., :math:`\\frac{\\partial t}{\\partial z}`, at the collocation nodes.
-                J (numpy.ndarray): ``[Np, N_tets]`` The determinant of the Jacobian matrix for the coordinate transformation,
-                    at the collocation nodes.
+            rst_xyz (numpy.ndarray): see :attr:`rst_xyz`.
+            J (numpy.ndarray): see :attr:`J`.
         """
         Np = xyz.shape[1]  # the number of collocation points
         N_tets = xyz.shape[2]  # the number of elements
@@ -628,47 +543,14 @@ class AcousticsSimulation:
         """Compute outward pointing normals at element's faces as well as surface Jacobians.
 
         Args:
-            xyz (numpy.ndarray): ``[3, Np, N_tets]`` the physical space coordinates :math:`(x, y, z)` of the collocation points of each
-                of the N_tets elements of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
-                 ``xyz[2]`` contains the z-coordinates.
-            rst_xyz (numpy.ndarray): ``[3, 3, Np, N_tets]`` The derivative of the local coordinates :math:`R = (r, s, t)` with
-                respect to the physical coordinates :math:`X = (x, y, z)`, i.e., :math:`\\frac{\\partial R}{\\partial X}`,
-                at the collocation nodes. Specifically:
-                    rst_xyz[0, 0]: rx ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial r}{\\partial x}`, at the collocation nodes.
-                    rst_xyz[1, 0]: sx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial s}{\\partial x}`, at the collocation nodes.
-                    rst_xyz[2, 0]: tx (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                        coordinates :math:`x`, i.e., :math:`\\frac{\\partial t}{\\partial x}`, at the collocation nodes.
-                    rst_xyz[0, 1]: ry (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial r}{\\partial y}`, at the collocation nodes.
-                    rst_xyz[1, 1]: sy (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial s}{\\partial y}`, at the collocation nodes.
-                    rst_xyz[2, 1]: ty (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                        coordinates :math:`y`, i.e., :math:`\\frac{\\partial t}{\\partial y}`, at the collocation nodes.
-                    rst_xyz[0, 2]: rz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`r` with respect to the physical
-                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial r}{\\partial z}`, at the collocation nodes.
-                    rst_xyz[1, 2]: sz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`s` with respect to the physical
-                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial s}{\\partial z}`, at the collocation nodes.
-                    rst_xyz[2, 2]: tz (numpy.ndarray): ``[Np, N_tets]`` The derivative of the local coordinates :math:`t` with respect to the physical
-                        coordinates :math:`z`, i.e., :math:`\\frac{\\partial t}{\\partial z}`, at the collocation nodes.
-            J (numpy.ndarray): ``[Np, N_tets]`` The determinant of the Jacobian matrix for the coordinate transformation,
-                at the collocation nodes.
-            Fmask (numpy.ndarray): ``[4, Nfp]`` an array containing local indices of nodes for each of the four faces of the
-                reference element.
+            xyz (numpy.ndarray): see :attr:`xyz`.
+            rst_xyz (numpy.ndarray): see :attr:`rst_xyz`.
+            J (numpy.ndarray): see :attr:`J`.
+            Fmask (numpy.ndarray): see :attr:`Fmask`.
 
         Returns:
-            (tuple): tuple containing:
-                n_xyz (numpy.ndarray): ``[3, 4*Np, N_tets]`` the outwards normals :math:`\\vec{n}` at each collocation
-                    point on the element faces. Specifically:
-                    n_xyz[0, :] (numpy.ndarray): nx ``[4*Nfp, N_tets]`` The :math:`x`-component of the outward normal :math:`\\vec{n}`
-                        at each of the ``Nfp`` nodes on each of the 4 facets of each of the :attr:`N_tets` elements.
-                    n_xyz[1, :] (numpy.ndarray): ny ``[4*Nfp, N_tets]`` The :math:`y`-component of the outward normal :math:`\\vec{n}`
-                        at each of the ``Nfp`` nodes on each of the 4 facets of each of the :attr:`N_tets` elements.
-                    n_xyz[2, :] (numpy.ndarray): nz ``[4*Nfp, N_tets]`` The :math:`z`-component of the outward normal :math:`\\vec{n}`
-                        at each of the ``Nfp`` nodes on each of the 4 facets of each of the :attr:`N_tets` elements.
-                sJ (numpy.ndarray): ``[4*Nfp, N_tets]`` The determinant of the surface Jacobian matrix at each of the
-                    collocation nodes, for each of the 4 faces of the :attr:`N_tets` elements.
+            n_xyz (numpy.ndarray): see :attr:`n_xyz`.
+            sJ (numpy.ndarray): see :attr:`sJ`.
         """
         N_tets = xyz.shape[2]  # number of elements
         Np = xyz.shape[1]  # number of collocation points
@@ -745,22 +627,14 @@ class AcousticsSimulation:
         """Find connectivity for nodes given per surface in all elements
 
         Args:
-            xyz (numpy.ndarray): ``[3, Np, N_tets]`` the physical space coordinates :math:`(x, y, z)` of the collocation points of each element of the\
-            mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates, ``xyz[2]`` contains the z-coordinates.
-            EToE (numpy.ndarray): an ``[4, N_tets]`` array containing the information of which elements are neighbors of
-                an element, i.e., EToE[j, i] returns the index of the jth neighbor of element i. The definition of jth
-                neighbor follows the mesh generator's convention.
-            EToF (numpy.ndarray): an ``[4, N_tets]`` array containing the information of which face is shared between the
-                element and its neighbor,  i.e.,  EToF[j, i] returns the face index of the jth neighbor of element i. 
-                Face indices follow the same convention as neighbor indices.
-            Fmask (numpy.ndarray): ``[4, Nfp]`` an array containing the local indices of the ``Nfp`` nodes on each of the four faces of 
-                the reference element.
-            node_tol (float): the tolerance used to determine if a node lies on a facet.
-
+            xyz (numpy.ndarray): see :attr:`xyz`.
+            EToE (numpy.ndarray): see :any:`edg_acoustics.Mesh.EToE`.
+            EToF (numpy.ndarray): see :any:`edg_acoustics.Mesh.EToF`.
+            Fmask (numpy.ndarray): see :attr:`Fmask`.
+            node_tol (float): see :attr:`node_tolerance`.
         Returns:
-            (tuple): tuple containing:
-                vmapM (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for interior values.
-                vmapP (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for exterior values.
+            vmapM (numpy.ndarray): see :attr:`vmapM`.
+            vmapP (numpy.ndarray): see :attr:`vmapP`.
         """
 
         N_tets = xyz.shape[2]  # number of elements
@@ -779,7 +653,7 @@ class AcousticsSimulation:
         tmp = numpy.ones(Nfp, dtype=numpy.uint8)
         D = numpy.zeros([Nfp, Nfp])
 
-        xV = xyz[0].reshape(-1)  # viewing, get x in a 1D row-wise form, consistent with
+        xV = xyz[0].reshape(-1)  # flatten the x-coordinates
         yV = xyz[1].reshape(-1)
         zV = xyz[2].reshape(-1)
 
@@ -848,22 +722,13 @@ class AcousticsSimulation:
 
 
         Args:
-            BC_list (dict[str, int]): a dictionary containing the definition of the boundary
-                conditions that are present in the mesh. BC_list.keys() must contain the same elements as
-                mesh.BC_triangles.keys(), i.e., all boundary conditions in the mesh must have an associated boundary condition
-                definition.
-            EToV (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
-                tetrahedra that make up the mesh.
-            vmapM (numpy.ndarray): ``[4*Nfp*N_tets, 1]`` an array containing the global indices for interior values.
-            BC_triangles (dict[str, numpy.ndarray]): a dictionary containing the list of triangles that have a certain
-                boundary condition. BC_triangles['BC_label'] is a numpy.array with the nodes of each triangle where
-                boundary condition of type 'BC_label' is to be implemented. The nodes defining each triangle in the
-                numpy.array are stored per row.
-            Nx (int): the polynomial degree of the approximating DG finite element space
-
+            BC_list (dict[str, int]): see :attr:`BC_list`.
+            EToV (numpy.ndarray): see :any:`edg_acoustics.Mesh.EToV`.
+            vmapM (numpy.ndarray): see :attr:`vmapM`.
+            BC_triangles (dict[str, numpy.ndarray]): see :attr:`edg_acoustics.mesh.Mesh.BC_triangles`.
+            Nx (int): see :attr:`Nx`.
         Returns:
-            BCnode (list[dict]): List of boundary map nodes, each element being a dictionary
-                with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)].
+            BCnode (list[dict]): see :attr:`BCnode`.
         """
         Nfp = AcousticsSimulation.compute_Nfp(
             Nx
@@ -885,14 +750,19 @@ class AcousticsSimulation:
 
         for i in range(len(BC_list)):
             BCnode[i]["map"] = numpy.nonzero(BCType.reshape(-1) == BCnode[i]["label"])[0]
-            # BCType.reshape(-1) and resulting 'map' first sweep through K, which is consistent with Nx.reshape(-1) and vmapM
             BCnode[i]["vmap"] = vmapM[BCnode[i]["map"]]
 
         return BCnode
 
     @staticmethod
     def diameter_3d(Fscale: numpy.ndarray):
-        """Compute the minimum diameter of the inscribed spheres in all elements."""
+        """Compute the minimum diameter of the inscribed spheres in all elements.
+
+        Args:
+            Fscale (numpy.ndarray): see :attr:`Fscale`.
+        Returns:
+            diameter (float): minimum diameter of the inscribed spheres in all elements.
+        """
         Nfp = int(Fscale.shape[0] / 4)
         AtoV = 3 / 2 * Fscale[[0, Nfp, 2 * Nfp, 3 * Nfp]].sum(axis=0)
         diameter = 6 / AtoV
@@ -903,11 +773,13 @@ class AcousticsSimulation:
 
         Args:
             U (numpy.ndarray): ``[Np, N_tets]`` the acoustic variables that needs to be differentiated.
-            axis (str): the axis to be differentiated w.r.t, e.g. 'x', 'y','z', 'xyz'
+            axis (str): the axis to be differentiated w.r.t, e.g. 'x', 'y', 'z', 'xyz'
 
         Returns:
-            (possible tuple):  containing:
-                dUdx/dUdy/dUdz (numpy.ndarray): ``[Np, N_tets]`` derivatives/gradient at every nodal point
+            dUdx (numpy.ndarray): ``[Np, N_tets]`` derivatives :math:`\\frac{\\partial U}{\\partial x}` at every nodal point, if axis is 'x'.
+            dUdy (numpy.ndarray): ``[Np, N_tets]`` derivatives :math:`\\frac{\\partial U}{\\partial y}` at every nodal point, if axis is 'y'.
+            dUdz (numpy.ndarray): ``[Np, N_tets]`` derivatives :math:`\\frac{\\partial U}{\\partial z}` at every nodal point, if axis is 'z'.
+            Tuple of gradient (numpy.ndarray): ``[Np, N_tets]`` gradient (:math:`\\frac{\\partial U}{\\partial x}, \\frac{\\partial U}{\\partial y}, \\frac{\\partial U}{\\partial z}`), if axis is 'xyz'.
         """
         dUdr = self.Dr @ U
         dUds = self.Ds @ U
@@ -928,10 +800,9 @@ class AcousticsSimulation:
             raise ValueError(f"Invalid axis: {axis}")
 
     @staticmethod
-    # https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
     def locate_simplex(
         node_coordinates: numpy.ndarray,
-        node_ids: numpy.ndarray,
+        vertices: numpy.ndarray,
         rec: numpy.ndarray,
         methodLocate="scipy",
     ):
@@ -939,11 +810,7 @@ class AcousticsSimulation:
 
         Args:
             node_coordinates (numpy.ndarray): (self.N_vertices,3) array containing the coordinates of each node
-            node_ids (numpy.ndarray): An (4 x self.N_tets) array containing the 4 indices of the vertices of the N_tets
-               tetrahedra that make up the mesh.
-            An (M x self.N_vertices) array containing the M coordinates of the self.N_vertices
-                vertices that make up the mesh. M specifies the geometric dimension of the mesh, such that the mesh
-                describes an M-dimensional domain.
+            vertices (numpy.ndarray): see :attr:`edg_acoustics.Mesh.vertices`.
             rec (numpy.ndarray): An (N_rec x 3) array containing the (x, y, z) coordinates of N_rec microphone locations.
             methodLocate (str): search method to locate the simplices containing the sample points. Available methods are 'scipy' and 'brute_force'.
                 brutal force approach, adopted from https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
@@ -954,25 +821,23 @@ class AcousticsSimulation:
         """
         if methodLocate == "scipy":
             tri = Delaunay(node_coordinates.T, qhull_options="QJ")
-            tri.simplices = node_ids.T  # type: ignore
-            tri.nsimplex = node_ids.shape[1]  # type: ignore
+            tri.simplices = vertices.T  # type: ignore
+            tri.nsimplex = vertices.shape[1]  # type: ignore
 
             nodeindex = tri.find_simplex(rec.T)  # type: ignore
 
         elif methodLocate == "brute_force":
-            node_ids = node_ids.T
-            ori = node_coordinates.T[node_ids[:, 0], :]
-            v1 = node_coordinates.T[node_ids[:, 1], :] - ori
-            v2 = node_coordinates.T[node_ids[:, 2], :] - ori
-            v3 = node_coordinates.T[node_ids[:, 3], :] - ori
-            n_tet = len(node_ids)
+            vertices = vertices.T
+            ori = node_coordinates.T[vertices[:, 0], :]
+            v1 = node_coordinates.T[vertices[:, 1], :] - ori
+            v2 = node_coordinates.T[vertices[:, 2], :] - ori
+            v3 = node_coordinates.T[vertices[:, 3], :] - ori
+            n_tet = len(vertices)
             v1r = v1.T.reshape((3, 1, n_tet))
             v2r = v2.T.reshape((3, 1, n_tet))
             v3r = v3.T.reshape((3, 1, n_tet))
             mat = numpy.concatenate((v1r, v2r, v3r), axis=1)
             inv_mat = numpy.linalg.inv(mat.T).T  # https://stackoverflow.com/a/41851137/12056867
-            # if rec.size==3:  # to make rec has a dimension of (N_rec,3)
-            #     rec=rec.reshape((1,3))
             N_rec = rec.shape[1]
             orir = numpy.repeat(ori[:, :, numpy.newaxis], N_rec, axis=2)
             newp = numpy.einsum("imk,kmj->kij", inv_mat, rec - orir)
@@ -997,11 +862,12 @@ class AcousticsSimulation:
         """Compute interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location)
 
         Args:
-            methodLocate (str): search method to locate the simplices containing the sample points
+            methodLocate (str): search method to locate the simplices containing the sample points. Available methods are 'scipy' and 'brute_force'.
+                brutal force approach, adopted from https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
 
         Returns:
             sampleWeight (numpy.ndarray): ``[N_rec, Np]`` interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location).
-            nodeindex (numpy.ndarray): ``[N_rec, ]`` index of simplices that contatin the sample (microphone) points
+            nodeindex (numpy.ndarray): ``[N_rec, ]`` index of simplices that contatin the sample (microphone) points.
         """
         nodeindex = AcousticsSimulation.locate_simplex(
             self.mesh.vertices, self.mesh.EToV, self.rec, methodLocate
@@ -1019,10 +885,10 @@ class AcousticsSimulation:
         return sampleWeight, nodeindex
 
     def init_IC(self, IC: edg_acoustics.InitialCondition):
-        """setup the initial condition.
-        Args:
+        """setup the initial condition and save it to the :class:`AcousticsSimulation` class.
 
-        Returns:
+        Args:
+            IC (edg_acoustics.InitialCondition): the initial condition object.
         """
         self.IC = IC
         self.P = self.IC.Pinit(self.xyz)
@@ -1031,20 +897,34 @@ class AcousticsSimulation:
         self.Vz = self.IC.VZinit(self.xyz)
 
     def init_BC(self, BC):
-        """load the boundary condition and save it to the AcousticsSimulation class."""
+        """load the boundary condition and save it to the :class:`AcousticsSimulation` class.
+
+        Args:
+            BC (edg_acoustics.BoundaryCondition): the boundary condition object.
+        """
         self.BC = BC
 
     def init_rec(self, rec: numpy.ndarray, methodLocate: str = "scipy"):
-        """load the receiver locations and save it to the AcousticsSimulation class."""
+        """load the receiver locations and save it to the :class:`AcousticsSimulation` class.
+        Then compute the interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location).
+
+        Args:
+            rec (numpy.ndarray): An (N_rec x 3) array containing the (x, y, z) coordinates of N_rec microphone locations.
+            methodLocate (str): search method to locate the simplices containing the sample points. Available methods are 'scipy' and 'brute_force'.
+                brutal force approach, adopted from https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339
+        """
         self.rec = rec
         self.sampleWeight, self.nodeindex = self.sample3D(methodLocate)
 
     def init_Flux(self, Flux):
-        """load the interior flux  calculation and save it to the AcousticsSimulation class."""
+        """load the interior flux  calculation and save it to the :class:`AcousticsSimulation` class.
+
+        Args:
+            Flux (edg_acoustics.Flux): the flux object."""
         self.flux = Flux
 
     def init_TimeIntegrator(self, time_integrator: edg_acoustics.TimeIntegrator):
-        """load the time integrator to be used to and save it to the AcousticsSimulation class."""
+        """load the time integrator to be used to and save it to the :class:`AcousticsSimulation` class."""
         self.time_integrator = time_integrator
 
     def RHS_operator(
@@ -1055,19 +935,21 @@ class AcousticsSimulation:
         Vz: numpy.ndarray,
         BCvar: list[dict],
     ):
-        """Compute the right-hand side of the acoustic equations.
+        """Compute the right-hand side of the linear acoustic equations with the DG discretization.
 
         Args:
             P (numpy.ndarray): Pressure field.
             Vx (numpy.ndarray): Velocity field in the x-direction.
             Vy (numpy.ndarray): Velocity field in the y-direction.
             Vz (numpy.ndarray): Velocity field in the z-direction.
-            BCvar (list[dict]): List of dictionaries containing boundary condition variables.
+            BCvar (list[dict]): see :data:`edg_acoustics.AbsorbBC.BCvar`.
 
         Returns:
-            tuple: A tuple containing the computed right-hand side values for pressure (RHS_P),
-            velocity in the x-direction (RHS_Vx), velocity in the y-direction (RHS_Vy),
-            velocity in the z-direction (RHS_Vz), and the updated boundary condition variables (BCvar).
+            RHS_P (numpy.ndarray): Right-hand side values for pressure.
+            RHS_Vx (numpy.ndarray): Right-hand side values for velocity in the x-direction.
+            RHS_Vy (numpy.ndarray): Right-hand side values for velocity in the y-direction.
+            RHS_Vz (numpy.ndarray): Right-hand side values for velocity in the z-direction.
+            BCvar (list[dict]): updated boundary condition variables.
         """
 
         # Initialize jump variables
@@ -1176,11 +1058,15 @@ class AcousticsSimulation:
 
     def time_integration(self, **kwargs):
         """perform the time integration of the acoustic equations.
-        kwargs:
-            n_time_steps (int): number of time steps to compute.
-            total_time (float): total simulation time to compute, determines the number of time steps given the current time step.
+
+        Args:
+            **n_time_steps (int, optional): number of time steps to be performed.
+            **total_time (float, optional): total simulation time to be performed,
+                determines the number of time steps given the current time step.
+            **delta_step (int, optional): print solution every delta_step time steps.
 
         Returns:
+            prec (numpy.ndarray): Pressure field at the microphone locations.
         """
 
         # Process optional input arguments
@@ -1207,11 +1093,14 @@ class AcousticsSimulation:
 
         # Step the solution
         for StepIndex in range(self.Ntimesteps):
-            print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
-            print(f"Current/Total time {self.time_integrator.dt * StepIndex}/{total_time}")
 
             self.time_integrator.step_dt(
                 self.P, self.Vx, self.Vy, self.Vz, self.BC
             )  # by changing the value in place, the ID of the object is not changed (no new object is created), but the previous value is lost, which is not important here, because the previous value is not used anymore
             self.prec[:, StepIndex] = numpy.diag(self.sampleWeight @ self.P[:, self.nodeindex])
-            print(f"P at mic locations {self.prec[:,StepIndex]}")
+
+            if "delta_step" in kwargs and StepIndex % kwargs["delta_step"] == 0:
+                print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
+                print(f"Current/Total time {self.time_integrator.dt * StepIndex}/{total_time}")
+                print(f"P at mic locations {self.prec[:,StepIndex]}")
+        return self.prec
