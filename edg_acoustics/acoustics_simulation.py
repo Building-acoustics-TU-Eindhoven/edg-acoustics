@@ -49,7 +49,7 @@ class AcousticsSimulation:
             definition.
 
         BCnode (list[dict]): List of boundary map nodes, each element being a dictionary
-                with keys (values) ['label'(int),'map'(numpy.ndarray),'vmap'(numpy.ndarray)].
+                with keys (values) ['label' (int), 'map' (numpy.ndarray), 'vmap' (numpy.ndarray)].
 
         c0 (float): the speed of sound in the medium in which the acoustic wave propagates.
 
