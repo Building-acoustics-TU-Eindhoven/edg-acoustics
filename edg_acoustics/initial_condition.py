@@ -43,9 +43,11 @@ class Monopole_IC(InitialCondition):
     :class:`.Monopole_IC` is used to setup monopple source initial condition.
 
     Args:
-        xyz (numpy.ndarray): ``[3, Np, N_tets]`` the physical space coordinates :math:`(x, y, z)` of the collocation points of each
-                element of the mesh. ``xyz[0]`` contains the x-coordinates, ``xyz[1]`` contains the y-coordinates,
-                ``xyz[2]`` contains the z-coordinates.
+        xyz (numpy.ndarray): see :attr:`edg_acoustics.AcousticsSimulation.xyz`.
+        source_xyz (numpy.ndarray): an (3,) array containing the physical coordinates of the monopole source.
+        halfwidth (float): half-bandwidth of the initial Gaussian pulse.
+
+    Attributes:
         source_xyz (numpy.ndarray): an (3,) array containing the physical coordinates of the monopole source.
         halfwidth (float): half-bandwidth of the initial Gaussian pulse.
     """
