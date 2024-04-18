@@ -802,15 +802,15 @@ class AcousticsSimulation:
     @staticmethod
     def locate_simplex(
         node_coordinates: numpy.ndarray,
-        vertices: numpy.ndarray,
+        EToV: numpy.ndarray,
         rec: numpy.ndarray,
-        methodLocate="scipy",
+        methodLocate: str = "scipy",
     ):
         """Locate the simplices containing the sample points.
 
         Args:
-            node_coordinates (numpy.ndarray): (self.N_vertices,3) array containing the coordinates of each node
-            vertices (numpy.ndarray): see :attr:`edg_acoustics.Mesh.vertices`.
+            node_coordinates (numpy.ndarray): see :attr:`edg_acoustics.Mesh.vertices`.
+            EToV (numpy.ndarray): see :attr:`edg_acoustics.Mesh.EToV`.
             rec (numpy.ndarray): An (N_rec x 3) array containing the (x, y, z) coordinates of N_rec microphone locations.
             methodLocate (str): search method to locate the simplices containing the sample points. Available methods are 'scipy' and 'brute_force'.
                 brutal force approach, adopted from https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339#60745339
@@ -821,18 +821,18 @@ class AcousticsSimulation:
         """
         if methodLocate == "scipy":
             tri = Delaunay(node_coordinates.T, qhull_options="QJ")
-            tri.simplices = vertices.T  # type: ignore
-            tri.nsimplex = vertices.shape[1]  # type: ignore
+            tri.simplices = EToV.T  # type: ignore
+            tri.nsimplex = EToV.shape[1]  # type: ignore
 
             nodeindex = tri.find_simplex(rec.T)  # type: ignore
 
         elif methodLocate == "brute_force":
-            vertices = vertices.T
-            ori = node_coordinates.T[vertices[:, 0], :]
-            v1 = node_coordinates.T[vertices[:, 1], :] - ori
-            v2 = node_coordinates.T[vertices[:, 2], :] - ori
-            v3 = node_coordinates.T[vertices[:, 3], :] - ori
-            n_tet = len(vertices)
+            EToV = EToV.T
+            ori = node_coordinates.T[EToV[:, 0], :]
+            v1 = node_coordinates.T[EToV[:, 1], :] - ori
+            v2 = node_coordinates.T[EToV[:, 2], :] - ori
+            v3 = node_coordinates.T[EToV[:, 3], :] - ori
+            n_tet = len(EToV)
             v1r = v1.T.reshape((3, 1, n_tet))
             v2r = v2.T.reshape((3, 1, n_tet))
             v3r = v3.T.reshape((3, 1, n_tet))
@@ -858,7 +858,7 @@ class AcousticsSimulation:
 
     # instance method -------------------------------------------------------------------------------------------------------
 
-    def sample3D(self, methodLocate):
+    def sample3D(self, methodLocate: str = "scipy"):
         """Compute interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location)
 
         Args:
