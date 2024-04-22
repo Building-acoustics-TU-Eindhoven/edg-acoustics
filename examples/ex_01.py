@@ -1,26 +1,15 @@
 import os
-import sys
 import edg_acoustics
 import numpy
+import scipy.io
 
-
-from edg_acoustics.time_integration import TimeIntegrator
+# from edg_acoustics.time_integration import TimeIntegrator
 
 # from edg_acoustics.mesh import Mesh
 # print(dir(edg_acoustics))
 
 # Boundary conditions
 BC_labels = {"slip": 11, "impedance1": 13, "impedance2": 14}
-# # BC paras
-# BCpara (list [dict]): a list of boundary conditon parameters from the multi-pole model. Each element is a dictionary
-# with keys (values) ['label'(int),'RI'(float),'RP'(numpy.ndarray),'CP'(numpy.ndarray)].
-# 'RI' refers to the limit value of the reflection coefficient as the frequency approaches infinity, i.e., :math:`R_\\inf`.
-# 'RP' refers to real pole pairs, i.e., :math:`A` (stored in 1st row), :math:`\\zeta` (stored in 2nd row).
-# 'CP' refers to complex pole pairs, i.e., :math:`B` (stored in 1st row), :math:`C` (stored in 2nd row),
-#         :math:`\\alpha` (stored in 3rd row), :math:`\\beta`(stored in 4th row).
-# More details about the multi-pole model parameters and boundary condition can be found in reference https://doi.org/10.1121/10.0001128.
-# BCpara[:]['label'] must contain the same integer elements as acoustics_simulation.BCnode[:]['label'],
-# i.e., all boundary conditions in the simulation must have an associated boundary condition parameters.
 
 BC_para = [
     {"label": 11, "RI": 1},
@@ -106,34 +95,19 @@ ToT = 0.05  # total simulation time in seconds
 sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, mesh, BC_labels)
 
 
-Flux = edg_acoustics.UpwindFlux(rho0, c0, sim.n_xyz)
+flux = edg_acoustics.UpwindFlux(rho0, c0, sim.n_xyz)
 AbBC = edg_acoustics.AbsorbBC(sim.BCnode, BC_para)
-
-# bc = edg_acoustics.BoundaryCondition(sim.BCnode, BC_para)
 
 sim.init_BC(AbBC)
 sim.init_IC(IC)
-sim.init_Flux(Flux)
-sim.init_rec(rec, "brute_force")  # brute_force or scipy(default)
+sim.init_Flux(flux)
+sim.init_rec(rec, "scipy")  # brute_force or scipy(default)
 
-tsi_time_integrator = edg_acoustics.TSI_TI(sim.RHS_operator, sim.dtscale, Nt, CFL)
+tsi_time_integrator = edg_acoustics.TSI_TI(sim.RHS_operator, sim.dtscale, CFL, Nt=3)
 sim.init_TimeIntegrator(tsi_time_integrator)
-sim.time_integration(total_time=ToT)
-# sim.init_TimeIntegration(TSI, rec, ToT)
-
-###########another simulation
-# sim.resetIC() #
-# sim.init_Flux(Flux)
-
-# TSI = edg_acoustics.TSI_TI(sim, CFL)
-# sim.init_TimeIntegration(TSI, rec, ToT)
+prec = sim.time_integration(total_time=ToT, delta_step=10)
 
 
-# IC=edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)
-# edg_acoustics.InitialCondition.monopole(sim.xyz, source_xyz, halfwidth)
-# sim.IC.set_frequency
-
-# setup=edg_acoustics.setup_(sim,BC_para)
-# simulation=edg_acoustics.time_
-
+# Save prec to Matlab format file
+scipy.io.savemat("/Users/huiqing/Desktop/DG_RoomAcoustics/examples/prec.mat", {"prec": prec})
 print("Finished!")
