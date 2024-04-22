@@ -36,3 +36,10 @@ venv3
 test_code/test_python.py
 test_code/test_meshio
 tests/dev_tests/*
+
+# documentation examples
+edg_acoustics/example_google.py
+
+# matlab data files
+*.mat
+examples/*.mat
