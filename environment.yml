@@ -4,10 +4,8 @@ channels:
 dependencies:
   - python>=3.8
   - ipython
-  - spyder
   - pymbolic
   - mayavi
-  - cookiecutter
   - setuptools>=67.6.0
   - meshio>=5.3.4
   - scipy
