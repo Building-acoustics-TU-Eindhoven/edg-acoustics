@@ -18,15 +18,15 @@
 # -- Project information -----------------------------------------------------
 
 project = "edg_acoustics"
-custom_copyright = "2022, h.wang6@tue.nl"
-author = "Huiqing Wang"
+custom_copyright = "2024, h.wang6@tue.nl"
+author = "Huiqing Wang, Artur Palha"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = "0.1.0"
+version = "2024.04"
 # The full version, including alpha/beta/rc tags.
 release = version
 
