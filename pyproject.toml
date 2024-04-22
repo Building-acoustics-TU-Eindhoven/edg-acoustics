@@ -4,6 +4,8 @@
 #https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers
 #https://packaging.python.org/en/latest/glossary/#term-Build-Frontend
 #https://setuptools.pypa.io/en/latest/userguide/dependency_management.html
+#https://setuptools.pypa.io/en/latest/userguide/datafiles.html 
+#https://packaging.python.org/en/latest/tutorials/packaging-projects/
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -30,7 +32,12 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
-dependencies = ["numpy", "meshio >=5.3.4", "modepy == 2021.1", "scipy"]
+dependencies = [
+    "numpy",
+    "meshio >=5.3.4",
+    "modepy == 2021.1",
+    "scipy",
+] #https://setuptools.pypa.io/en/latest/userguide/dependency_management.html
 keywords = [
     "DG",
     "room acoustic modeling",
@@ -50,7 +57,7 @@ Issues = "https://github.com/Building-acoustics-TU-Eindhoven/edg-acoustics/issue
 Changelog = "https://github.com/Building-acoustics-TU-Eindhoven/edg-acoustics/CHANGELOG.md"
 
 
-[project.optional-dependencies]
+[project.optional-dependencies] #  dependencies that are not installed by default. This effectively means that you can create a “variant” of  package with a set of extra functionalities.
 dev = [
     "coverage[toml]",
     "pytest",
