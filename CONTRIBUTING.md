@@ -8,18 +8,19 @@ A contribution can be one of the following cases:
 1. you think you may have found a bug (including unexpected behavior);
 1. you want to make some kind of change to the code base (e.g. to fix a bug, to add a new feature, to update documentation);
 1. you want to make a new release of the code base.
+1. you want to propose new features or improvements to existing functionalities.
 
 The sections below outline the steps in each case.
 
 ## You have a question
 
-1. use the search functionality [here](https://github.com/EDG-Acoustics/edg-acoustics/issues) to see if someone already filed the same issue;
+1. use the search functionality [here](https://github.com/hqwang815/DG_RoomAcoustics/issues) to see if someone already filed the same issue;
 2. if your issue search did not yield any relevant results, make a new issue;
 3. apply the "Question" label; apply other labels when relevant.
 
 ## You think you may have found a bug
 
-1. use the search functionality [here](https://github.com/EDG-Acoustics/edg-acoustics/issues) to see if someone already filed the same issue;
+1. use the search functionality [here](https://github.com/hqwang815/DG_RoomAcoustics/issues) to see if someone already filed the same issue;
 1. if your issue search did not yield any relevant results, make a new issue, making sure to provide enough information to the rest of the community to understand the cause and context of the problem. Depending on the issue, you may want to include:
     - the [SHA hashcode](https://help.github.com/articles/autolinked-references-and-urls/#commit-shas) of the commit that is causing your problem;
     - some identifying information (name and version number) for dependencies you're using;
