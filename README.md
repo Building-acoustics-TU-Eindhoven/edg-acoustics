@@ -1,47 +1,79 @@
-## Badges
+# DG_RoomAcoustics
 
-(Customize these badges with your own links, and check https://shields.io/ or https://badgen.net/ to see which other badges are available.)
+## Description
 
-| fair-software.eu recommendations | |
-| :-- | :--  |
-| (1/5) code repository              | [![github repo badge](https://img.shields.io/badge/github-repo-000.svg?logo=github&labelColor=gray&color=blue)](https://github.com/EDG-Acoustics/edg-acoustics) |
-| (2/5) license                      | [![github license badge](https://img.shields.io/github/license/EDG-Acoustics/edg-acoustics)](https://github.com/EDG-Acoustics/edg-acoustics) |
-| (4/5) citation                     | [![DOI](https://zenodo.org/badge/DOI/<replace-with-created-DOI>.svg)](https://doi.org/<replace-with-created-DOI>) |
-| (5/5) checklist                    | [![workflow cii badge](https://bestpractices.coreinfrastructure.org/projects/<replace-with-created-project-identifier>/badge)](https://bestpractices.coreinfrastructure.org/projects/<replace-with-created-project-identifier>) |
-| howfairis                          | [![fair-software badge](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8B-yellow)](https://fair-software.eu) |
-| **Other best practices**           | &nbsp; |
-| Static analysis                    | [![workflow scq badge](https://sonarcloud.io/api/project_badges/measure?project=EDG-Acoustics_edg-acoustics&metric=alert_status)](https://sonarcloud.io/dashboard?id=EDG-Acoustics_edg-acoustics) |
-| Coverage                           | [![workflow scc badge](https://sonarcloud.io/api/project_badges/measure?project=EDG-Acoustics_edg-acoustics&metric=coverage)](https://sonarcloud.io/dashboard?id=EDG-Acoustics_edg-acoustics) |
-| **GitHub Actions**                 | &nbsp; |
-| Build                              | [![build](https://github.com/EDG-Acoustics/edg-acoustics/actions/workflows/build.yml/badge.svg)](https://github.com/EDG-Acoustics/edg-acoustics/actions/workflows/build.yml) |
-| Citation data consistency               | [![cffconvert](https://github.com/EDG-Acoustics/edg-acoustics/actions/workflows/cffconvert.yml/badge.svg)](https://github.com/EDG-Acoustics/edg-acoustics/actions/workflows/cffconvert.yml) |
-| MarkDown link checker              | [![markdown-link-check](https://github.com/EDG-Acoustics/edg-acoustics/actions/workflows/markdown-link-check.yml/badge.svg)](https://github.com/EDG-Acoustics/edg-acoustics/actions/workflows/markdown-link-check.yml) |
-
-## How to use edg_acoustics
-
-DG room acoustic modeling package
-
-The project setup is documented in [project_setup.md](project_setup.md). Feel free to remove this document (and/or the link to this document) if you don't need it.
+DG_RoomAcoustics is an open-source software package designed for the simulation of room acoustics using the time-domain wave-based method. This software implements the nodal discontinuous Galerkin (DG) method for spatial discretization of the linear acoustic equations, integrated over time with high-order schemes such as explicit Runge-Kutta and ADER (Arbitrary high-order DERivative) integration. DG_RoomAcoustics excels in scenarios where traditional geometrical acoustics tools fall short, providing superior accuracy in capturing complex wave phenomena such as diffraction, scattering, and modal effects. The software is designed to be user-friendly, with a focus on ease of use and flexibility, allowing researchers and engineers to simulate a wide range of room acoustics problems with high accuracy and computational efficiency.
 
 ## Installation
 
-To install edg_acoustics from GitHub repository, do:
+To install DG_RoomAcoustics from GitHub repository, do:
 
 ```console
-git clone https://github.com/EDG-Acoustics/edg-acoustics.git
+git clone https://github.com/hqwang815/DG_RoomAcoustics.git
 cd edg-acoustics
 python3 -m pip install .
 ```
 
+## Usage
+
+To use DG_RoomAcoustics, please refer to the examples provided in the [examples](examples) directory of the repository. These examples cover a range of scenarios to help you understand how to apply the software to your specific needs.
+
+## License Information
+
+This project is licensed under the Apache License Version 2.0. For more details, see the [LICENSE](LICENSE) file for details.
+
 ## Documentation
 
-Include a link to your project's full documentation here.
+This [documentation](https://dg-roomacoustics.readthedocs.io/) is designed to help you to understand and develop DG_RoomAcoustics effectively.
 
 ## Contributing
 
-If you want to contribute to the development of edg_acoustics,
-have a look at the [contribution guidelines](CONTRIBUTING.md).
+We welcome contributions to DG_RoomAcoustics! If you would like to help improve the project, you can have a look at the [contribution guidelines](CONTRIBUTING.md).
+
+## Author and Contact Information
+
+**Huiqing Wang**  
+Email: <h.wang6@tue.nl>  
+
+**Artur Palha**  
+Email: <A.Palha@tudelft.nl>  
+
+## Acknowledgments
+
+DG_RoomAcoustics uses two open-source packages:
+
+- **[meshio](https://github.com/nschloe/meshio)**: A versatile mesh file input/output library.
+
+- **[modepy](https://documen.tician.de/modepy/index.html)**: A library for evaluating and integrating with modal (polynomial) bases on simplices.
+
+We would like to thank the authors of these packages for their contributions to the open-source community.
+
+## Citation
+
+If you use DG_RoomAcoustics in your research,  please help our scientific visibility by citing our work! Please cite the following paper: to be added.
+
+## Funding Information
+
+This work was supported by the Dutch Research Council (NWO) under the project "[A new era of room acoustics simulation software: from academic advances to a sustainable open source project and community](https://www.cursor.tue.nl/en/news/2022/februari/week-4/nwo-subsidy-for-open-source-project-on-room-acoustics/)" (project number 19430). The authors would also like to acknowledge the support of eScience center of Netherlands under the grant of "Small-Scale Initiatives in Software Performance Optimization" ([OpenSSI 2021b](https://www.esciencecenter.nl/news/researchers-to-benefit-from-cutting-edge-research-software-in-25-newly-awarded-projects/))
+
+## Development Plan
+
+### Performance Optimization
+
+- Implement high-performance computing techniques to accelerate simulations, particularly focusing on GPU acceleration.
+
+### User Interface Development
+
+- Develop a more user-friendly interface to simplify the setup and execution of simulation scenarios.
+
+### Feature Extensions
+
+- Integrate additional acoustic modeling features based on community feedback, including advanced boundary condition models and post-processing tools for acoustic parameter calculations.
+
+### Documentation Expansion
+
+- Enhance documentation and examples to provide more comprehensive guidance and support to new users.
 
 ## Credits
 
-This package was created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [NLeSC/python-template](https://github.com/NLeSC/python-template).
+This package was firstly created following [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [NLeSC/python-template](https://github.com/NLeSC/python-template). Later modifications were made by the authors of the project.
