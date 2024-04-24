@@ -1,3 +1,0 @@
-pytest~=7.1.2
-setuptools~=67.6.0
-meshio~=5.3.4
