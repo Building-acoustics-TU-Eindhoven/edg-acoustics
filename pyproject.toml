@@ -78,6 +78,9 @@ branch = true
 source = ["edg_acoustics"]
 command_line = "-m pytest"
 
+# [tool.setuptools]
+# py-modules = []
+
 # [tool.tox]
 # legacy_tox_ini = """
 # [tox]
@@ -90,8 +93,11 @@ command_line = "-m pytest"
 
 [tool.pylint.parameter_documentation]
 accept-no-param-doc = true
+
 accept-no-raise-doc = true
+
 accept-no-return-doc = true
+
 accept-no-yields-doc = true
 
 # Possible choices: ['sphinx', 'epytext', 'google', 'numpy', 'default']
