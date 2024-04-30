@@ -124,8 +124,7 @@ class BoundaryCondition(abc.ABC):
                     )
                 elif polekey == "CP":
                     alpha = paras["CP"][2, :]
-                    beta = paras["CP"][3, :]
-                    assert ((alpha > 0) & (beta > 0)).all(), (
+                    assert ((alpha > 0)).all(), (
                         "[edg_acoustics.BoundaryCondition] To satisfy causality and reality conditions, "
                         "all complex poles must have positive damping ratio, physical boundary "
                         + str(paras["label"])
