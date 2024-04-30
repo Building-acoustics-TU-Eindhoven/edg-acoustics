@@ -42,4 +42,5 @@ edg_acoustics/example_google.py
 
 # matlab data files
 *.mat
-examples/*.mat
+# !examples/*.mat
+!examples/scenario1/*.mat
