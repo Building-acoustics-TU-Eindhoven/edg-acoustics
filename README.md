@@ -20,7 +20,7 @@ To use DG_RoomAcoustics, please refer to the examples provided in the [examples]
 
 ## License Information
 
-This project is licensed under the Apache License Version 2.0. For more details, see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0. For more details, see the [LICENSE](LICENSE) file for details.
 
 ## Documentation
 
