@@ -1,6 +1,74 @@
+#https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+#https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
+#https://packaging.python.org/en/latest/tutorials/packaging-projects/#choosing-build-backend
+#https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers
+#https://packaging.python.org/en/latest/glossary/#term-Build-Frontend
+#https://setuptools.pypa.io/en/latest/userguide/dependency_management.html
+#https://setuptools.pypa.io/en/latest/userguide/datafiles.html 
+#https://packaging.python.org/en/latest/tutorials/packaging-projects/
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "edg_acoustics"
+version = "2024.04"
+description = "Wave-based room acoustic modeling package with the DG method"
+authors = [
+    { name = "Huiqing Wang", email = "h.wang6@tue.nl" },
+    { name = "Artur Palha", email = "A.Palha@tudelft.nl" },
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: General Public License v3.0",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "numpy",
+    "meshio >=5.3.4",
+    "modepy == 2021.1",
+    "scipy",
+] #https://setuptools.pypa.io/en/latest/userguide/dependency_management.html
+keywords = [
+    "DG",
+    "room acoustic modeling",
+    "wave-based",
+    "finite element method",
+    "high-order",
+    "acoustics",
+    "impulse response",
+    "discontinuous Galerkin",
+]
+
+[project.urls]
+Homepage = "https://github.com/Building-acoustics-TU-Eindhoven/edg-acoustics"
+# Documentation = ""
+Repository = "https://github.com/Building-acoustics-TU-Eindhoven/edg-acoustics"
+Issues = "https://github.com/Building-acoustics-TU-Eindhoven/edg-acoustics/issues"
+Changelog = "https://github.com/Building-acoustics-TU-Eindhoven/edg-acoustics/CHANGELOG.md"
+
+
+[project.optional-dependencies] #  dependencies that are not installed by default. This effectively means that you can create a “variant” of  package with a set of extra functionalities.
+dev = [
+    "coverage[toml]",
+    "pytest",
+    "pytest-cov",
+    "sphinx",
+    "sphinx_rtd_theme",
+    "sphinx-autoapi",
+    "tox",
+    "myst_parser",
+]
+publishing = ["twine", "wheel"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -10,12 +78,27 @@ branch = true
 source = ["edg_acoustics"]
 command_line = "-m pytest"
 
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py37,py38,py39
-skip_missing_interpreters = true
-[testenv]
-commands = pytest
-extras = dev
-"""
+# [tool.setuptools]
+# py-modules = []
+
+# [tool.tox]
+# legacy_tox_ini = """
+# [tox]
+# envlist = py37,py38,py39
+# skip_missing_interpreters = true
+# [testenv]
+# commands = pytest
+# extras = dev
+# """
+
+[tool.pylint.parameter_documentation]
+accept-no-param-doc = true
+
+accept-no-raise-doc = true
+
+accept-no-return-doc = true
+
+accept-no-yields-doc = true
+
+# Possible choices: ['sphinx', 'epytext', 'google', 'numpy', 'default']
+default-docstring-type = "google"

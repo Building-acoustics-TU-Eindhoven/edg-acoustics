@@ -17,16 +17,16 @@
 
 # -- Project information -----------------------------------------------------
 
-project = u"edg_acoustics"
-copyright = u"2022, h.wang6@tue.nl"
-author = u"Huiqing Wang"
+project = "edg_acoustics"
+custom_copyright = "2024, h.wang6@tue.nl"
+author = "Huiqing Wang, Artur Palha"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = "0.1.0"
+version = "2024.04"
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -57,11 +57,11 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = False
+todo_include_todos = True
 
 # -- Use autoapi.extension to run sphinx-apidoc -------
 
-autoapi_dirs = ['../edg_acoustics']
+autoapi_dirs = ["../edg_acoustics"]
 
 # -- Options for HTML output ----------------------------------------------
 
@@ -78,11 +78,23 @@ html_theme = "sphinx_rtd_theme"
 
 # -- Options for Intersphinx
 
-intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
-                       # Commonly used libraries, uncomment when used in package
-                       # 'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-                       # 'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
-                       # 'scikit-learn': ('https://scikit-learn.org/stable/', None),
-                       # 'matplotlib': ('https://matplotlib.org/stable/', None),
-                       # 'pandas': ('http://pandas.pydata.org/docs/', None),
-                       }
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    # Commonly used libraries, uncomment when used in package
+    "numpy": ("http://docs.scipy.org/doc/numpy/", None),
+    "scipy": ("http://docs.scipy.org/doc/scipy/reference/", None),
+    "modepy": ("https://documen.tician.de/modepy/", None),
+    # 'scikit-learn': ('https://scikit-learn.org/stable/', None),
+    # 'matplotlib': ('https://matplotlib.org/stable/', None),
+    # 'pandas': ('http://pandas.pydata.org/docs/', None),
+}
+
+# -- Options for Napoleon
+napoleon_custom_sections = [("Returns", "params_style")]
+
+
+html_static_path = ["./"]
+html_css_files = [
+    "custom.css",
+]
+# html_logo = "_static/logo.png"
