@@ -1,7 +1,7 @@
 # YAML 1.2
 ---
-cff-version: "1.1.0"
-title: "edg_acoustics"
+cff-version: "FIXME"
+title: "DG_RoomAcoustics"
 authors:
   - family-names: Wang
     given-names: Huiqing
@@ -11,11 +11,15 @@ authors:
     orcid: "https://orcid.org/0000-0002-3217-0747"
 date-released: 2022-11-16
 doi: 10.0000/FIXME
-version: "0.1.0"
-repository-code: "https://github.com/EDG-Acoustics/edg-acoustics"
+version: "2024.04""
+repository-code: "https://github.com/Building-acoustics-TU-Eindhoven/edg-acoustics"
 keywords:
   - discontinuous Galerkin
   - time-domain
   - room acoustic modeling
+  - wave-based
+  - finite element method
+  - room acoustics
+  - impulse response
 message: "If you use this software, please cite it using these metadata."
 license: GNU General Public License v3.0
