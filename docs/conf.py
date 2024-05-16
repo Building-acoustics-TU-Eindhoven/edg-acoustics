@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = "edg_acoustics"
+project = "DG_RoomAcoustics"
 custom_copyright = "2024, h.wang6@tue.nl"
 author = "Huiqing Wang, Artur Palha"
 

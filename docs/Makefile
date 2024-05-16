@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
-SPHINXPROJ    = edg_acoustics
+SPHINXPROJ    = DG_RoomAcoustics
 SOURCEDIR     = .
 BUILDDIR      = _build
 
