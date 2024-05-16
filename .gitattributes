@@ -2,3 +2,12 @@
 
 # Python data files
 *.npy binary
+
+# Matlab data files
+*.mat binary
+
+# Compiled Python files
+*.pyc binary
+
+# msh files of GMSH
+*.msh binary
