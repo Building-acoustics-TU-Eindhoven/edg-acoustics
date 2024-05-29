@@ -909,7 +909,7 @@ class AcousticsSimulation:
         Then compute the interpolation weights required to interpolate the nodal data to the sample (i.e., microphone location).
 
         Args:
-            rec (numpy.ndarray): An (N_rec x 3) array containing the (x, y, z) coordinates of N_rec microphone locations.
+            rec (numpy.ndarray): An ``[3, N_rec]`` array containing the (x, y, z) coordinates of N_rec microphone locations.
             methodLocate (str): search method to locate the simplices containing the sample points. Available methods are 'scipy' and 'brute_force'.
                 brutal force approach, adopted from https://stackoverflow.com/questions/25179693/how-to-check-whether-the-point-is-in-the-tetrahedron-or-not/60745339
         """
@@ -1057,13 +1057,12 @@ class AcousticsSimulation:
         return RHS_P, RHS_Vx, RHS_Vy, RHS_Vz, BCvar
 
     def time_integration(self, **kwargs):
-        """perform the time integration of the acoustic equations.
+        """Perform time integration for the acoustics simulation. Additional keyword arguments are optional and can vary:
 
         Args:
-            **n_time_steps (int, optional): number of time steps to be performed.
-            **total_time (float, optional): total simulation time to be performed,
-                determines the number of time steps given the current time step.
-            **delta_step (int, optional): print solution every delta_step time steps.
+            n_time_steps (int): number of time steps to be performed.
+            total_time (float): total simulation time to be performed, determines the number of time steps given the current time step.
+            delta_step (int): print solution every delta_step time steps.
 
         Returns:
             prec (numpy.ndarray): Pressure field at the microphone locations.
@@ -1097,7 +1096,7 @@ class AcousticsSimulation:
             self.time_integrator.step_dt(
                 self.P, self.Vx, self.Vy, self.Vz, self.BC
             )  # by changing the value in place, the ID of the object is not changed (no new object is created), but the previous value is lost, which is not important here, because the previous value is not used anymore
-            self.prec[:, StepIndex] = numpy.diag(self.sampleWeight @ self.P[:, self.nodeindex])
+            self.prec[:, StepIndex] = numpy.diag(self.sampleWeight @ self.P[:, self.nodeindex])  # type: ignore
 
             if "delta_step" in kwargs and StepIndex % kwargs["delta_step"] == 0:
                 print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
