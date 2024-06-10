@@ -90,7 +90,7 @@ recy = recx.copy()
 recz = recx.copy()
 rec = numpy.vstack((recx, recy, recz))  # dim:[3,n_rec]
 
-ToT = 0.05  # total simulation time in seconds
+ToT = 0.001  # total simulation time in seconds
 
 sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, mesh, BC_labels)
 
@@ -107,7 +107,11 @@ tsi_time_integrator = edg_acoustics.TSI_TI(sim.RHS_operator, sim.dtscale, CFL, N
 sim.init_TimeIntegrator(tsi_time_integrator)
 prec = sim.time_integration(total_time=ToT, delta_step=10)
 
+results = edg_acoustics.Monopole_postprocessor(sim, 1)
+IR, TR, freqs = post.apply_correction()
+# results.apply_correction()
 
 # Save prec to Matlab format file
-scipy.io.savemat("/Users/huiqing/Desktop/DG_RoomAcoustics/examples/prec.mat", {"prec": prec})
+result_filename = os.path.join(os.path.split(os.path.abspath(__file__))[0], "result.mat")
+scipy.io.savemat(result_filename, {"prec": prec, "IR": IR, "TR": TR, "freqs": freqs, "sim": sim})
 print("Finished!")
