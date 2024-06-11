@@ -1,7 +1,6 @@
 import os
-import edg_acoustics
 import numpy
-import scipy.io
+import edg_acoustics
 
 # from edg_acoustics.time_integration import TimeIntegrator
 
@@ -108,10 +107,16 @@ sim.init_TimeIntegrator(tsi_time_integrator)
 prec = sim.time_integration(total_time=ToT, delta_step=10)
 
 results = edg_acoustics.Monopole_postprocessor(sim, 1)
-IR, TR, freqs = post.apply_correction()
-# results.apply_correction()
+# IR, TR, freqs = post.apply_correction()
+results.apply_correction()
 
-# Save prec to Matlab format file
-result_filename = os.path.join(os.path.split(os.path.abspath(__file__))[0], "result.mat")
-scipy.io.savemat(result_filename, {"prec": prec, "IR": IR, "TR": TR, "freqs": freqs, "sim": sim})
+
+# Save prec to Matlab format file # result_filename = os.path.join(os.path.split(os.path.abspath(__file__))[0], "newresult.mat")
+# scipy.io.savemat(result_filename, {"prec": prec, "IR": IR, "TR": TR, "freqs": freqs, "sim": sim})
+
+
+result_filename = os.path.join(os.path.split(os.path.abspath(__file__))[0], "newresult")
+results.write_results(result_filename, "npy")
+# load newresult.npy
+# data = numpy.load("./examples/newresult.npz", allow_pickle=True)
 print("Finished!")
