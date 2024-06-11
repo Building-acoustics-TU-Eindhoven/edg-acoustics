@@ -104,7 +104,8 @@ sim.init_rec(rec, "scipy")  # brute_force or scipy(default)
 
 tsi_time_integrator = edg_acoustics.TSI_TI(sim.RHS_operator, sim.dtscale, CFL, Nt=3)
 sim.init_TimeIntegrator(tsi_time_integrator)
-prec = sim.time_integration(total_time=ToT, delta_step=10)
+# prec = sim.time_integration(total_time=ToT, delta_step=10)
+sim.time_integration(total_time=ToT, delta_step=2, save_step=10, format="mat")
 
 results = edg_acoustics.Monopole_postprocessor(sim, 1)
 # IR, TR, freqs = post.apply_correction()
@@ -119,4 +120,5 @@ result_filename = os.path.join(os.path.split(os.path.abspath(__file__))[0], "new
 results.write_results(result_filename, "npy")
 # load newresult.npy
 # data = numpy.load("./examples/newresult.npz", allow_pickle=True)
+# tempdata = numpy.load("./results_on_the_run.npz", allow_pickle=True)
 print("Finished!")

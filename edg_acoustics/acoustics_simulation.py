@@ -7,6 +7,7 @@ Note that objects enclosed by square brackets (e.g., ``[dimension1, dimension2]`
 from __future__ import annotations
 import math
 import numpy
+import scipy
 import modepy
 from scipy.spatial.qhull import Delaunay
 import edg_acoustics
@@ -1063,6 +1064,8 @@ class AcousticsSimulation:
             n_time_steps (int): number of time steps to be performed.
             total_time (float): total simulation time to be performed, determines the number of time steps given the current time step.
             delta_step (int): print solution every delta_step time steps.
+            save_step (int): save solution every save_step time steps.
+            format (str): the format of the file to save the results. Can be either 'mat' or 'npy'. The default format is 'mat'.
 
         Returns:
             prec (numpy.ndarray): Pressure field at the microphone locations.
@@ -1095,11 +1098,65 @@ class AcousticsSimulation:
 
             self.time_integrator.step_dt(
                 self.P, self.Vx, self.Vy, self.Vz, self.BC
-            )  # by changing the value in place, the ID of the object is not changed (no new object is created), but the previous value is lost, which is not important here, because the previous value is not used anymore
+            )  # by changing the value in place, the ID of the object is not changed (no new object is created), but the previous value is lost, which is not important here, because the previous value is not used anymore``
             self.prec[:, StepIndex] = numpy.diag(self.sampleWeight @ self.P[:, self.nodeindex])  # type: ignore
 
             if "delta_step" in kwargs and StepIndex % kwargs["delta_step"] == 0:
                 print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
                 print(f"Current/Total time {self.time_integrator.dt * StepIndex}/{total_time}")
                 print(f"P at mic locations {self.prec[:,StepIndex]}")
+
+            if "save_step" in kwargs and StepIndex % kwargs["save_step"] == 0:
+                self.save_results_on_the_run(format=kwargs.get("format", "mat"))
         return self.prec
+
+    def save_results_on_the_run(self, format: str = "mat"):
+        """Save the temporary simulation results to a file.
+
+        Args:
+            format (str): the format of the file to save the results. Can be either 'mat' or 'npy'. The default format is 'mat'.
+        """
+        if format == "mat":
+            scipy.io.savemat(
+                "results_on_the_run.mat",
+                {
+                    "BCpara": self.BC.BCpara,
+                    "prec": self.prec,
+                    "rec": self.rec,
+                    "dt": self.time_integrator.dt,
+                    "Ntimesteps": self.Ntimesteps,
+                    "total_time": self.Ntimesteps * self.time_integrator.dt,
+                    "Np": self.Np,
+                    "N_tets": self.N_tets,
+                    "rho0": self.rho0,
+                    "c0": self.c0,
+                    "mesh_filename": self.mesh.filename,
+                    "source_xyz": self.IC.source_xyz,
+                    "halfwidth": self.IC.halfwidth,
+                    "Nx": self.Nx,
+                    "Nt": self.time_integrator.Nt,
+                    "CFL": self.time_integrator.CFL,
+                },
+            )
+        elif format == "npy":
+            numpy.savez(
+                "results_on_the_run.npz",
+                BCpara=self.BC.BCpara,
+                prec=self.prec,
+                rec=self.rec,
+                dt=self.time_integrator.dt,
+                Ntimesteps=self.Ntimesteps,
+                total_time=self.Ntimesteps * self.time_integrator.dt,
+                Np=self.Np,
+                N_tets=self.mesh.N_tets,
+                rho0=self.rho0,
+                c0=self.c0,
+                mesh_filename=self.mesh.filename,
+                source_xyz=self.IC.source_xyz,
+                halfwidth=self.IC.halfwidth,
+                Nx=self.Nx,
+                Nt=self.time_integrator.Nt,
+                CFL=self.time_integrator.CFL,
+            )
+        else:
+            raise ValueError("Invalid format, the format should be either 'mat' or 'npy'.")
