@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "DG_RoomAcoustics"
-custom_copyright = "2024, h.wang6@tue.nl"
+copyright = "Huiqing Wang, h.wang6@tue.nl, 2024"
 author = "Huiqing Wang, Artur Palha"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -47,7 +47,14 @@ extensions = [
     "autoapi.extension",
     "myst_parser",
 ]
-
+autodoc_typehints = "description"
+autodoc_default_options = {
+    "member-order": "bysource",
+    "special-members": "__init__",
+    "undoc-members": True,
+    "exclude-members": "__weakref__",
+    "show-inheritance": True,
+}
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
