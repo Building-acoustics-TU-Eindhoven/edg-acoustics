@@ -11,7 +11,7 @@ import scipy
 import modepy
 from scipy.spatial.qhull import Delaunay
 import edg_acoustics
-
+import time;
 
 __all__ = ["AcousticsSimulation", "NODETOL"]
 
@@ -1093,6 +1093,8 @@ class AcousticsSimulation:
 
         self.prec = numpy.zeros([self.rec.shape[1], self.Ntimesteps])
 
+        curTime = time.time()
+        prevEstimated = 0
         # Step the solution
         for StepIndex in range(self.Ntimesteps):
 
@@ -1100,8 +1102,20 @@ class AcousticsSimulation:
                 self.P, self.Vx, self.Vy, self.Vz, self.BC
             )  # by changing the value in place, the ID of the object is not changed (no new object is created), but the previous value is lost, which is not important here, because the previous value is not used anymore``
             self.prec[:, StepIndex] = numpy.diag(self.sampleWeight @ self.P[:, self.nodeindex])  # type: ignore
-
             if "delta_step" in kwargs and StepIndex % kwargs["delta_step"] == 0:
+                newTime = time.time()
+                elapsed = newTime - curTime
+                if prevEstimated == 0:
+                    estimated = (self.Ntimesteps - (StepIndex + 1)) * elapsed/10
+                else:
+                    estimated = 0.99 * prevEstimated + 0.01 * (self.Ntimesteps - (StepIndex + 1)) * elapsed/10
+                    
+                minutes = math.floor(estimated/60)
+                seconds = math.floor(estimated - 60 * minutes)
+                print(f"Estimated time left: {minutes} minutes {seconds} seconds")
+                print(f"Percentage done: {round(100*(StepIndex + 1)/self.Ntimesteps)} %")
+                curTime = newTime;
+                prevEstimated = estimated;
                 print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
                 print(f"Current/Total time {self.time_integrator.dt * StepIndex}/{total_time}")
                 print(f"P at mic locations {self.prec[:,StepIndex]}")
