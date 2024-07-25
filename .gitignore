@@ -44,3 +44,6 @@ edg_acoustics/example_google.py
 *.mat
 # !examples/*.mat
 !examples/scenario1/*.mat
+
+# test mesh files
+data/tests/mesh/*
