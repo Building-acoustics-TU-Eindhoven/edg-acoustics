@@ -68,8 +68,8 @@ class Monopole_IC(InitialCondition):
             halfwidth (float): halfwidth of the initial Gaussian pulse.
         """
         # Given data points
-        x_points = numpy.array([300, 500, 800, 1000, 2000, 4000])
-        y_points = numpy.array([0.4, 0.33, 0.23, 0.17, 0.09, 0.05])
+        x_points = numpy.array([20, 300, 500, 800, 1000, 2000, 4000, 8000])
+        y_points = numpy.array([0.6, 0.4, 0.33, 0.23, 0.17, 0.09, 0.05, 0.015])
 
         linear_interp = interp1d(x_points, y_points, kind="linear")
 
