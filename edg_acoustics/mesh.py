@@ -161,8 +161,8 @@ class Mesh:
         # using bisection method, make a loop to get the length_of_mesh such that PPW is between 8 and 10. The loop should break when the PPW is between 8 and 10.
 
         length_of_mesh = wavelength / 2.5  # initial guess of length_of_mesh
-        length_of_mesh_low = length_of_mesh / 5
-        length_of_mesh_high = length_of_mesh * 5
+        length_of_mesh_low = length_of_mesh / 10
+        length_of_mesh_high = length_of_mesh * 10
 
         Mesh.mesh_geo_file(geo_file, length_of_mesh)
         msh_file = geo_file[:-4] + ".msh"
