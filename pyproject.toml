@@ -37,6 +37,7 @@ dependencies = [
     "meshio >=5.3.4",
     "modepy == 2021.1",
     "scipy",
+    "gmsh",
 ] #https://setuptools.pypa.io/en/latest/userguide/dependency_management.html
 keywords = [
     "DG",
