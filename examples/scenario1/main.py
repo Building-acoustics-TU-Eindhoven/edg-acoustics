@@ -26,11 +26,11 @@ real_valued_impedance_boundary = [
 
 mesh_name = "scenario_2_coarser.msh"  # name of the mesh file. The mesh file should be in the same folder as this script.
 monopole_xyz = numpy.array([3.04, 2.59, 1.62])  # x,y,z coordinate of the source in the room
-halfwidth = 0.23  # halfwidth of the initial Gaussian source in meters. It determines the width of the initial Gaussian source in the simulation, which is used to control the upper limit of frequency content of the source signal. For simulations below 500 Hz, a value of 0.2 is recommended. For simulatoins between 500 and 1000 Hz, a value of 0.15 is recommended. For simulations between 1K and 3K Hz, a value of 0.075 is recommended.
+freq_upper_limit = 200  # upper limit of the frequency content of the source signal in Hz. The source signal is a Gaussian pulse with a frequency content up to this limit.
 
 # Approximation degrees
-Nx = 3  # in space
-Nt = 3  # in time
+Nx = 4  # in space
+Nt = 4  # in time
 CFL = 0.5  # CFL number, default is 0.5.
 recx = numpy.array([4.26])
 recy = numpy.array([1.76])
@@ -86,7 +86,7 @@ mesh_filename = os.path.join(mesh_data_folder, mesh_name)
 mesh = edg_acoustics.Mesh(mesh_filename, BC_labels)
 
 
-IC = edg_acoustics.Monopole_IC(monopole_xyz, halfwidth)
+IC = edg_acoustics.Monopole_IC(monopole_xyz, freq_upper_limit)
 
 sim = edg_acoustics.AcousticsSimulation(rho0, c0, Nx, mesh, BC_labels)
 
