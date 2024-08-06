@@ -994,10 +994,26 @@ class AcousticsSimulation:
                 if polekey == "RP":
                     for i in range(paras["RP"].shape[1]):
                         BCvar[index]["in"] += paras["RP"][0, i] * BCvar[index]["phi"][i]
+                        # BCvar[index]["in"] += paras["RP"][0, :].shape * BCvar[index]["phi"].shape
+                        # BCvar[index]["in"] += paras["RP"][0, :] * BCvar[index]["phi"]
+                        print(f"inside L, before, BCvar ID {id(BCvar)}")
+                        print(f"inside L, before, phi ID {id(BCvar[index]['phi'][i])}")
+                        # print(f"inside L, before, PHI ID {id(BCvar[index]['PHI'])}")
+                        # print(f"inside L, before BCvar[index]['phi'] {BCvar[index]['phi'].max()}")
+
                         BCvar[index]["phi"][i] = (
                             BCvar[index]["ou"] - paras["RP"][1, i] * BCvar[index]["phi"][i]
                         )  # RHS for BCvar[index]['phi']
 
+                        # BCvar[index]["phi"][i] *= -paras["RP"][1, i]
+                        # BCvar[index]["phi"][i] += BCvar[index]["ou"]  # RHS for BCvar[index]['phi']
+
+                        # print(f"inside L, after BCvar[index]['phi'] {BCvar[index]['phi'].max()}")
+                        print(f"inside L, after , phi ID {id(BCvar[index]['phi'][i])}")
+                        # print(f"inside L, after, PHI ID {id(BCvar[index]['PHI'])}")
+
+                        print(f"Inside L, after,  BCvar ID {id(BCvar)}")
+                        print("---------------------------------------------------")
                 elif polekey == "CP":
                     for i in range(paras["CP"].shape[1]):
                         BCvar[index]["in"] += (
@@ -1148,10 +1164,13 @@ class AcousticsSimulation:
                     "source_xyz": self.IC.source_xyz,
                     "halfwidth": self.IC.halfwidth,
                     "Nx": self.Nx,
-                    "Nt": self.time_integrator.Nt,
+                    # "Nt": self.time_integrator.Nt,
                     "CFL": self.time_integrator.CFL,
                 },
             )
+            # if variable "Nt" exists
+            # scipy.io.savemat("results_on_the_run.mat", {"BCpara": self.BC.BCpara, "prec": self.prec, "rec": self.rec, "dt": self.time_integrator.dt, "Ntimesteps": self.Ntimesteps, "total_time": self.Ntimesteps * self.time_integrator.dt, "Np": self.Np, "N_tets": self.mesh.N_tets, "rho0": self.rho0, "c0": self.c0, "mesh_filename": self.mesh.filename, "source_xyz": self.IC.source_xyz, "halfwidth": self.IC.halfwidth, "Nx": self.Nx, "Nt": self.time_integrator.Nt, "CFL": self.time_integrator.CFL})
+
         elif format == "npy":
             numpy.savez(
                 "results_on_the_run.npz",
@@ -1169,7 +1188,7 @@ class AcousticsSimulation:
                 source_xyz=self.IC.source_xyz,
                 halfwidth=self.IC.halfwidth,
                 Nx=self.Nx,
-                Nt=self.time_integrator.Nt,
+                # Nt=self.time_integrator.Nt,
                 CFL=self.time_integrator.CFL,
             )
         else:

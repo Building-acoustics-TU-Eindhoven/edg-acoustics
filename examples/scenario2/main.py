@@ -25,18 +25,18 @@ BC_labels = {
 
 mesh_name = "Corridor.geo"  # name of the geometry file. The .geo file should be in the same folder as this script.
 monopole_xyz = numpy.array([12.45, 0.63, 1.5])  # x,y,z coordinate of the source in the room
-freq_upper_limit = 200  # upper limit of the frequency content of the source signal in Hz. The source signal is a Gaussian pulse with a frequency content up to this limit.
+freq_upper_limit = 150  # upper limit of the frequency content of the source signal in Hz. The source signal is a Gaussian pulse with a frequency content up to this limit.
 
 # Approximation degrees
-Nx = 4  # in space
+Nx = 3  # in space
 Nt = 4  # in time
-CFL = 0.5  # CFL number, default is 0.5.
+CFL = 0.1  # CFL number, default is 0.5.
 recx = numpy.array([4.45])
 recy = numpy.array([0.63])
 recz = numpy.array([1.5])
 rec = numpy.vstack((recx, recy, recz))  # dim:[3,n_rec]
 
-impulse_length = 1  # total simulation time in seconds
+impulse_length = 0.005  # total simulation time in seconds
 save_every_Nstep = 10  # save the results every N steps
 temporary_save_Nstep = 500  # save the results every N steps temporarily during the simulation. The temporary results will be saved in the root directory of this repo.
 
@@ -54,22 +54,22 @@ BC_para = [
         "RI": 0,
         "RP": numpy.array(
             [
-                [2.849308439512733e03, 1.849308439512733e03],
-                [2.843988875912554e03, 3.843988875912554e03],
+                [2.849308439512733e03, 3.308439512733e03],
+                [4.843988875912554e03, 5.49308439512733e04],
             ]
         ),
-        "CP": numpy.array([[-5.0, 10.0], [100.0, 3.0], [1.8e3, 1.3e3], [2.0e3, 4.0e3]]),
+        # "CP": numpy.array([[-5.0, 10.0], [100.0, 3.0], [1.8e3, 1.3e3], [2.0e3, 4.0e3]]),
     },
     {
         "label": 3,
         "RI": 0,
-        "RP": numpy.array(
-            [
-                [1.505778842079319e04, 1.805778842079319e04],
-                [1.509502512409186e04, 2.509502512409186e04],
-            ]
-        ),
-        "CP": numpy.array([[-5.0], [100.0], [1.8e3], [2.0e3]]),
+        # "RP": numpy.array(
+        #     [
+        #         [1.505778842079319e04, 1.805778842079319e04],
+        #         [1.509502512409186e04, 2.509502512409186e04],
+        #     ]
+        # ),
+        # "CP": numpy.array([[-5.0], [100.0], [1.8e3], [2.0e3]]),
     },
     {"label": 4, "RI": 0.95},
     {"label": 5, "RI": 0.9},
@@ -79,7 +79,7 @@ BC_para = [
 # mesh_data_folder is the current folder by default
 mesh_data_folder = os.path.split(os.path.abspath(__file__))[0]
 mesh_filename = os.path.join(mesh_data_folder, mesh_name)
-mesh = edg_acoustics.Mesh(mesh_filename, BC_labels, freq_max=freq_upper_limit)
+mesh = edg_acoustics.Mesh(mesh_filename, BC_labels, Nx=Nx, freq_max=freq_upper_limit)
 
 
 IC = edg_acoustics.Monopole_IC(monopole_xyz, freq_upper_limit)
@@ -96,8 +96,12 @@ sim.init_rec(
     rec, "scipy"
 )  # brute_force or scipy(default) approach to locate the receiver points in the mesh
 
-tsi_time_integrator = edg_acoustics.TSI_TI(sim.RHS_operator, sim.dtscale, CFL, Nt=3)
+tsi_time_integrator = edg_acoustics.TSI_TI(sim.RHS_operator, sim.dtscale, CFL, Nt=Nt)
 sim.init_TimeIntegrator(tsi_time_integrator)
+
+# RK_time_integrator = edg_acoustics.RK45_TI(sim.RHS_operator, sim.dtscale, CFL)
+# sim.init_TimeIntegrator(RK_time_integrator)
+
 sim.time_integration(
     total_time=impulse_length,
     delta_step=save_every_Nstep,

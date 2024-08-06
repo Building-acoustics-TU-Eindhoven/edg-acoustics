@@ -6,7 +6,7 @@ from .mesh import Mesh
 from .boundary_condition import BoundaryCondition, AbsorbBC
 from .initial_condition import InitialCondition, Monopole_IC
 from .preprocessing import Flux, UpwindFlux
-from .time_integration import TimeIntegrator, TSI_TI
+from .time_integration import TimeIntegrator, TSI_TI, RK45_TI
 from .postprocessing import Monopole_postprocessor
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
