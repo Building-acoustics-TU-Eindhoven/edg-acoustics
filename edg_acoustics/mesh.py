@@ -128,7 +128,8 @@ class Mesh:
         self.filename = filename
         self.BC_labels = BC_labels
         self.PPW = PPW
-        freq_max = kwargs["freq_max"]
+        if "freq_max" in kwargs:
+            freq_max = kwargs["freq_max"]
 
         # if filename is .msh, read the mesh file and call self.init_from_mesh_file . If not,call create_mesh_from_geo_file.
         if filename.endswith(".msh"):
