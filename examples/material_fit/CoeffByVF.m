@@ -1,6 +1,14 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This script is to fit the normal-incidence reflection coefficient of a material using vector fitting, which is the needed input for the DG simulation (more details in the boundary condition class of the API documentation and references therein)
+%
+%
+% Copyright 2024 Huiqing Wang
+%
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear all
 close all
-% this script is to approximate the reflection coefficient of a material using vector fitting, which is the needed input for the DG simulation (more details in the boundary condition class of the documentationt)
+
 % --------------------
 % Block 1: User input
 % --------------------
@@ -12,9 +20,9 @@ z0 = c0 * rho0; % Characteristic impedance of air
 savename= 'carpet'; % filename to save the results of the fitting for the interested material, this file will be loaded in the DG simulation, make sure the filename is consistent
 %%
 %Frequency samples:
-f_min =1;  % lower bound of frequency range
-f_max = 1000; % upper bound of frequency range
-frequency_step=2; % frequency step
+f_min =20;  % lower bound of frequency range
+f_max = 2000; % upper bound of frequency range
+frequency_step=10; % frequency step
 Niter=20; % number of iterations for vector fitting, 20 is prefered based on experience
 N =5; %  number of poles for the approximation
 freq = [f_min:frequency_step:f_max]; % frequency range
@@ -26,9 +34,8 @@ Z_Miki = z0*( 1 + 5.50*(x*1000).^(-0.632) - 1i*8.43*(x*1000).^(-0.632) );
 %% -------------------- -------------------- -------------------- --------------------
 
 
-Zs_to_fit=Z_Miki; % impedance to be approximated, need to be consistent with the freq vector
+Zs_to_fit=Z_Miki; % impedance values of materials to be fitted
 
-ReflectionCoefficient= (Zs_to_fit/z0 -1) ./ (Zs_to_fit/z0 +1);
 
 
 % --------------------------------------------------------------------------------
@@ -36,6 +43,7 @@ ReflectionCoefficient= (Zs_to_fit/z0 -1) ./ (Zs_to_fit/z0 +1);
 % --------------------------------------------------------------------------------
 
 
+ReflectionCoefficient= (Zs_to_fit/z0 -1) ./ (Zs_to_fit/z0 +1);
 
 Ns=length(freq);
 omega = 2*pi*freq;
