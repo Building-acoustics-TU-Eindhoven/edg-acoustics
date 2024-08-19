@@ -29,7 +29,7 @@ class Mesh:
 
     Data structure containing mesh definition. Mesh data is obtained from
     data stored in common mesh file format by
-    `Gmsh <https://gmsh.info/doc/texinfo/gmsh.html#File-formats>`_ (format versions 2.2, 4.0, and 4.1 ``.msh``).
+    `Gmsh format <https://gmsh.info/doc/texinfo/gmsh.html#File-formats>`_  (versions 2.2, 4.0, and 4.1 ``.msh``).
     Since mesh reading relies on meshio, other mesh generators can be made available in the future (e.g.,
     `DOLFIN XML <https://manpages.ubuntu.com/manpages/jammy/en/man1/dolfin-convert.1.html>`_ (``.xml``),
     `Netgen <https://github.com/ngsolve/netgen>`_ (``.vol``, ``.vol.gz``).
