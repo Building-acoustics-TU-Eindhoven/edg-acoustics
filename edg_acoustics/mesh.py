@@ -230,6 +230,27 @@ class Mesh:
             length_of_mesh (float): The mesh size factor to control the characteristic length.
         """
 
+        # Read the content of the Geo file
+        with open(geo_file, "r") as file:
+            geo_content = file.readlines()
+
+        # Specify the line to be removed
+        line_to_remove = "Mesh.RemeshAlgorithm = 1; // automatic\n"
+
+        # Remove the specified line from the content
+        if line_to_remove in geo_content:
+            geo_content.remove(line_to_remove)
+
+        # Specify the line to be added
+        # line_to_add = f"Mesh.CharacteristicLengthMax = {max_mesh_size};\n"
+
+        # Add the specified line to the content
+        # geo_content.append(line_to_add)
+
+        # Write the modified content back to the Geo file
+        with open(geo_file, "w") as file:
+            file.writelines(geo_content)
+
         gmsh.initialize()
         gmsh.open(geo_file)
 
