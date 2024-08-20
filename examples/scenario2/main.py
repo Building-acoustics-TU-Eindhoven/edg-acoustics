@@ -17,18 +17,17 @@ c0 = 343  # speed of sound in air at 20 degrees Celsius in m/s
 BC_labels = {
     "Doors": 1,
     "UpperWall": 2,
-    "Ceiling": 3,
+    "Floor": 3,
     "LowerWall": 4,
-    "Floor": 5,
+    "Ceiling": 5,
 }  # predefined labels for boundary conditions. please assign an arbitrary string to each type of boundary condition, e.g. hard wall, carpet, panel and an integer number of increasing order (starting from 1). The number should be unique for each type of boundary condition. The string help to keep track of the boundary surface and does not need to match the physical surface name exactly in the .geo mesh file.
 
 
 mesh_name = "Corridor.geo"  # name of the geometry file. The .geo file should be in the same folder as this script.
 monopole_xyz = numpy.array([12.45, 0.63, 1.5])  # x,y,z coordinate of the source in the room
-freq_upper_limit = 200  # upper limit of the frequency content of the source signal in Hz. The source signal is a Gaussian pulse with a frequency content up to this limit.
-
+freq_upper_limit = 250  # upper limit of the frequency content of the source signal in Hz. The source signal is a Gaussian pulse with a frequency content up to this limit.
 # Approximation degrees
-Nx = 4  # in space
+Nx = 5  # in space
 Nt = 4  # in time
 CFL = 0.5  # CFL number, default is 0.5.
 recx = numpy.array([4.45])
@@ -79,7 +78,7 @@ BC_para = [
 # mesh_data_folder is the current folder by default
 mesh_data_folder = os.path.split(os.path.abspath(__file__))[0]
 mesh_filename = os.path.join(mesh_data_folder, mesh_name)
-mesh = edg_acoustics.Mesh(mesh_filename, BC_labels, freq_max=freq_upper_limit)
+mesh = edg_acoustics.Mesh(mesh_filename, BC_labels, Nx, freq_max=freq_upper_limit)
 
 
 IC = edg_acoustics.Monopole_IC(monopole_xyz, freq_upper_limit)
