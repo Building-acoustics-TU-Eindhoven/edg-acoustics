@@ -15,6 +15,7 @@ dependencies:
     - modepy==2021.1
     - sphinx-autoapi
     - sphinx_rtd_theme
+    - gmsh
     
 # this file would successfully create a conda environment and interpreter by command
 # "conda env create -n DGA2 -f environment.yml"
