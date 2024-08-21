@@ -51,7 +51,7 @@ result_filename = "result"  # name of the result file. The result file will be s
 BC_para = []  # clear the BC_para list
 for material, label in BC_labels.items():
     if material == "hard wall":
-        BC_para.append({"label": label, "RI": 0.99})
+        BC_para.append({"label": label, "RI": 1})
     else:
         mat_files = glob.glob(f"{os.path.split(os.path.abspath(__file__))[0]}/{material}*.mat")
 
