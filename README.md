@@ -2,29 +2,25 @@
 
 ## Description
 
-DG_RoomAcoustics is an open-source software package designed for the simulation of room acoustics using the time-domain wave-based method. This software implements the nodal discontinuous Galerkin (DG) method for spatial discretization of the linear acoustic equations, integrated over time with high-order schemes such as explicit Runge-Kutta and ADER (Arbitrary high-order DERivative) integration. DG_RoomAcoustics excels in scenarios where traditional geometrical acoustics tools fall short, providing superior accuracy in capturing complex wave phenomena such as diffraction, scattering, and modal effects. The software is designed to be user-friendly, with a focus on ease of use and flexibility, allowing researchers and engineers to simulate a wide range of room acoustics problems with high accuracy and computational efficiency.
+DG_RoomAcoustics is an open-source software package designed for the simulation of room acoustics using the time-domain wave-based method. This software implements the nodal discontinuous Galerkin (DG) method for spatial discretization of the linear acoustic equations, integrated over time with high-order schemes such as explicit ADER (Arbitrary high-order DERivative) integration. DG_RoomAcoustics excels in scenarios where traditional geometrical acoustics tools fall short, providing superior accuracy in capturing complex wave phenomena such as diffraction, scattering, and modal effects. Following the principles of object-oriented programming paradigm, the software is designed with a focus on ease of use and flexibility, allowing researchers and engineers to simulate a wide range of room acoustics problems with high accuracy and computational efficiency.
 
 ## Installation
 
 To install DG_RoomAcoustics from GitHub repository, do:
 
 ```console
-git clone https://github.com/hqwang815/DG_RoomAcoustics.git
+git clone git@github.com:Building-acoustics-TU-Eindhoven/edg-acoustics.git
 cd edg-acoustics
 python3 -m pip install .
 ```
 
-## Usage
+## Usage & Documentation
 
-To use DG_RoomAcoustics, please refer to the examples provided in the [examples](examples) directory of the repository. These examples cover a range of scenarios to help you understand how to apply the software to your specific needs.
+This [documentation](https://dg-roomacoustics.readthedocs.io/) is created to help you to use and develop DG_RoomAcoustics effectively. To use DG_RoomAcoustics, please refer to the examples provided in the [examples](examples) directory of the repository. These examples cover a range of scenarios to help you understand how to apply the software to your specific needs.
 
 ## License Information
 
 This project is licensed under the GNU General Public License v3.0. For more details, see the [LICENSE](LICENSE) file for details.
-
-## Documentation
-
-This [documentation](https://dg-roomacoustics.readthedocs.io/) is designed to help you to understand and develop DG_RoomAcoustics effectively.
 
 ## Contributing
 
@@ -40,17 +36,27 @@ Email: <A.Palha@tudelft.nl>
 
 ## Acknowledgments
 
-DG_RoomAcoustics uses two open-source packages:
+DG_RoomAcoustics uses the following open-source packages/codes/toolkits:
+
+- **[GMSH](https://gmsh.info/)**: A powerful mesh generation tool with a built-in CAD engine and post-processor.
 
 - **[meshio](https://github.com/nschloe/meshio)**: A versatile mesh file input/output library.
 
 - **[modepy](https://documen.tician.de/modepy/index.html)**: A library for evaluating and integrating with modal (polynomial) bases on simplices.
 
-We would like to thank the authors of these packages for their contributions to the open-source community.
+- **[numpy](https://numpy.org/)**: A powerful numerical computing library for Python.
+
+- **[Vector Fitting](https://www.sintef.no/en/software/vector-fitting/)**: A software package for fitting rational functions to frequency-domain data.
+
+We would like to thank the authors of above packages for their contributions to the open-source community.
 
 ## Citation
 
-If you use DG_RoomAcoustics in your research,  please help our scientific visibility by citing our work! Please cite the following paper: to be added.
+If you use DG_RoomAcoustics in your research,  please help our scientific visibility by citing our work! Please cite the following paper:
+
+```bibtex
+bibtex entry of the Internoise2024 paper to be added
+```
 
 ## Funding Information
 
