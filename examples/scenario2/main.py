@@ -22,32 +22,9 @@ BC_labels = {
     "Ceiling": 5,
 }  # predefined labels for boundary conditions. please assign an arbitrary string to each type of boundary condition, e.g. hard wall, carpet, panel and an integer number of increasing order (starting from 1). The number should be unique for each type of boundary condition. The string help to keep track of the boundary surface and does not need to match the physical surface name exactly in the .geo mesh file.
 
-
-mesh_name = "Corridor.geo"  # name of the geometry file. The .geo file should be in the same folder as this script.
-monopole_xyz = numpy.array([12.45, 0.63, 1.5])  # x,y,z coordinate of the source in the room
-freq_upper_limit = 250  # upper limit of the frequency content of the source signal in Hz. The source signal is a Gaussian pulse with a frequency content up to this limit.
-# Approximation degrees
-Nx = 5  # in space
-Nt = 4  # in time
-CFL = 0.5  # CFL number, default is 0.5.
-recx = numpy.array([4.45])
-recy = numpy.array([0.63])
-recz = numpy.array([1.5])
-rec = numpy.vstack((recx, recy, recz))  # dim:[3,n_rec]
-
-impulse_length = 1  # total simulation time in seconds
-save_every_Nstep = 10  # save the results every N steps
-temporary_save_Nstep = 500  # save the results every N steps temporarily during the simulation. The temporary results will be saved in the root directory of this repo.
-
-result_filename = "result"  # name of the result file. The result file will be saved in the same folder as this script. The result file will be saved in .mat format.
-
-# --------------------------------------------------------------------------------
-# Block 2: Initialize the simulation，run the simulation and save the results
-# --------------------------------------------------------------------------------
-
 # input Boundary conditions and parameters
 BC_para = [
-    {"label": 1, "RI": 0.99},
+    {"label": 1, "RI": 0.9999},
     {
         "label": 2,
         "RI": 0,
@@ -73,6 +50,28 @@ BC_para = [
     {"label": 4, "RI": 0.95},
     {"label": 5, "RI": 0.9},
 ]
+
+mesh_name = "Corridor.geo"  # name of the geometry file. The .geo file should be in the same folder as this script.
+monopole_xyz = numpy.array([12.45, 0.63, 1.5])  # x,y,z coordinate of the source in the room
+freq_upper_limit = 250  # upper limit of the frequency content of the source signal in Hz. The source signal is a Gaussian pulse with a frequency content up to this limit.
+# Approximation degrees
+Nx = 5  # in space
+Nt = 4  # in time
+CFL = 0.5  # CFL number, default is 0.5.
+recx = numpy.array([4.45])
+recy = numpy.array([0.63])
+recz = numpy.array([1.5])
+rec = numpy.vstack((recx, recy, recz))  # dim:[3,n_rec]
+
+impulse_length = 1  # total simulation time in seconds
+save_every_Nstep = 10  # save the results every N steps
+temporary_save_Nstep = 500  # save the results every N steps temporarily during the simulation. The temporary results will be saved in the root directory of this repo.
+
+result_filename = "result"  # name of the result file. The result file will be saved in the same folder as this script. The result file will be saved in .mat format.
+
+# --------------------------------------------------------------------------------
+# Block 2: Initialize the simulation，run the simulation and save the results
+# --------------------------------------------------------------------------------
 
 
 # mesh_data_folder is the current folder by default
