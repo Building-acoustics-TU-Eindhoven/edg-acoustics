@@ -1,7 +1,5 @@
-# YAML 1.2
----
-cff-version: "FIXME"
-title: "DG_RoomAcoustics"
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
 authors:
   - family-names: Wang
     given-names: Huiqing
@@ -9,17 +7,37 @@ authors:
   - family-names: Palha
     given-names: Artur
     orcid: "https://orcid.org/0000-0002-3217-0747"
-date-released: 2022-11-16
-doi: 10.0000/FIXME
-version: "2024.04""
-repository-code: "https://github.com/Building-acoustics-TU-Eindhoven/edg-acoustics"
-keywords:
-  - discontinuous Galerkin
-  - time-domain
-  - room acoustic modeling
-  - wave-based
-  - finite element method
-  - room acoustics
-  - impulse response
-message: "If you use this software, please cite it using these metadata."
-license: GNU General Public License v3.0
+title: "DG_RoomAcoustics"
+date-released: 2024-08-30
+version: 1.0.0-alpha.1
+url: "https://github.com/Building-acoustics-TU-Eindhoven/edg-acoustics"
+
+
+# cff-version: 1.2.0
+# message: "If you use this software, please cite it as below."
+# authors:
+# - family-names: "Lisa"
+#   given-names: "Mona"
+#   orcid: "https://orcid.org/0000-0000-0000-0000"
+# - family-names: "Bot"
+#   given-names: "Hew"
+#   orcid: "https://orcid.org/0000-0000-0000-0000"
+# title: "My Research Software"
+# version: 2.0.4
+# doi: 10.5281/zenodo.1234
+# date-released: 2017-12-18
+# url: "https://github.com/github-linguist/linguist"
+
+
+# cff-version: 1.2.0
+# message: "If you use this software, please cite it as below."
+# authors:
+#   - family-names: Druskat
+#     given-names: Stephan
+#     orcid: https://orcid.org/1234-5678-9101-1121
+# title: "My Research Software"
+# version: 2.0.4
+# identifiers:
+#   - type: doi
+#     value: 10.5281/zenodo.1234
+# date-released: 2021-08-11
