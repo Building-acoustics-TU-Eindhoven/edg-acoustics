@@ -13,4 +13,4 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __author__ = "Huiqing Wang, Artur Palha"
 __email__ = "h.wang6@tue.nl, A.Palha@tudelft.nl"
-__version__ = "2024.04"
+__version__ = "1.0.0-alpha.1"

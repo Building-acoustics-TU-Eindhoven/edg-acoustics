@@ -12,7 +12,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "edg_acoustics"
-version = "2024.04"
+version = "1.0.0-alpha.1"
 description = "Wave-based room acoustic modeling package with the DG method"
 authors = [
     { name = "Huiqing Wang", email = "h.wang6@tue.nl" },
