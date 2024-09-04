@@ -25,10 +25,9 @@ author = "Huiqing Wang, Artur Palha"
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-# The short X.Y version.
-version = "2024.04"
-# The full version, including alpha/beta/rc tags.
-release = version
+# docs/conf.py
+version = "1.0.0-alpha.1"
+release = "1.0.0-alpha.1"
 
 # -- General configuration ------------------------------------------------
 
