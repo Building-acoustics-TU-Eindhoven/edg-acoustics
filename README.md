@@ -53,10 +53,36 @@ We would like to thank the authors of above packages for their contributions to 
 
 ## Citation
 
-If you use DG_RoomAcoustics in your research,  please help our scientific visibility by citing our work! Please cite the following paper:
+If you use DG_RoomAcoustics in your research,  please help our scientific visibility by citing our work:
 
 ```bibtex
-bibtex entry of the Internoise2024 paper to be added
+@software{wang_2024_13619551,
+  author       = {Wang, Huiqing and
+                  Palha, Artur},
+  title        = {DG\_RoomAcoustics},
+  month        = aug,
+  year         = 2024,
+  publisher    = {Zenodo},
+  version      = {v1.0.0-alpha.1},
+  doi          = {10.5281/zenodo.13619551},
+  url          = {https://doi.org/10.5281/zenodo.13619551}
+}
+```
+
+The software design is described in the following paper:
+
+```bibtex
+@inproceedings{wang2024open,
+  title={An open-source time-domain wave-based room acoustic software in Python based on the nodal discontinuous Galerkin method},
+  author={Wang, Huiqing and Palha, Artur and Hornikx, Maarten},
+  booktitle={INTER-NOISE and NOISE-CON Congress and Conference Proceedings},
+  volume={270},
+  number={5},
+  pages={6770--6777},
+  year={2024},
+  doi={https://doi.org/10.3397/IN_2024_3868},
+  organization={Institute of Noise Control Engineering}
+}
 ```
 
 ## Funding Information
