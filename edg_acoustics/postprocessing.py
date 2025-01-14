@@ -141,7 +141,7 @@ class Monopole_postprocessor:
                     "Nt": self.sim.time_integrator.Nt,
                     "CFL": self.sim.time_integrator.CFL,
                     "rec": self.sim.rec,
-                    "total_time[s]": self.sim.Ntimesteps * self.sim.time_integrator.dt,
+                    "total_time_s": self.sim.Ntimesteps * self.sim.time_integrator.dt,
                     "N_tets": self.sim.N_tets,
                 },
             )
