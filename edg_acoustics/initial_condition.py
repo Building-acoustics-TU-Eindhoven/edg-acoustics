@@ -56,7 +56,8 @@ class Monopole_IC(InitialCondition):
     def __init__(self, source_xyz: numpy.ndarray, frequency: float):
         self.source_xyz = source_xyz
         self.halfwidth = Monopole_IC.solve_halfwidth(frequency)
-
+        self.frequencyLimit = frequency
+        
     @staticmethod
     def solve_halfwidth(frequency: float):
         """Solve halfwidth of the initial Gaussian pulse, given a frequency, using linear interpolation. Avoids root choosing issue with analytical spectra of Gaussian pulse.

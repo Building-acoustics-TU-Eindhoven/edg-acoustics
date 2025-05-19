@@ -896,6 +896,7 @@ class AcousticsSimulation:
         self.Vx = self.IC.VXinit(self.xyz)
         self.Vy = self.IC.VYinit(self.xyz)
         self.Vz = self.IC.VZinit(self.xyz)
+        self.frequencyLimit = IC.frequencyLimit
 
     def init_BC(self, BC):
         """load the boundary condition and save it to the :class:`AcousticsSimulation` class.
