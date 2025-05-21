@@ -190,13 +190,13 @@ class Monopole_postprocessor:
         ms_left = 5
         ms_right = 100
 
-        f_min_limit = 20
-        f_max_limit = self.sim.frequencyLimit # TODO: change depending on max freq
+        window_length = fs_new / 3 # Heuristic to make sure that f_min_limit stays above 0
 
-        first_band_fmin = 50 * 2**(0.5)
-        last_band_fmax = self.sim.frequencyLimit * 2**(-0.5) # TODO: change depending on max freq
-
-        window_length = 10000
+        first_band_fmin = 20
+        last_band_fmax = self.sim.frequencyLimit
+        
+        f_min_limit = first_band_fmin - 6.33 * fs_new / window_length 
+        f_max_limit = last_band_fmax + 6.33 * fs_new / window_length
 
         FWHM = 2 * half_width
         alpha = 4 * log(2) / FWHM**2
@@ -284,6 +284,7 @@ class Monopole_postprocessor:
                 {
                     "IR": self.IRnew,
                     "TR": self.TR,
+                    "freq_limit": self.sim.frequencyLimit,
                     #"freqs": self.freqs,
                     "dt_old": self.dt_old,
                     "dt_simulation": self.sim.time_integrator.dt,
@@ -314,6 +315,7 @@ class Monopole_postprocessor:
                 f"{filename}",
                 IR=self.IRnew,
                 TR=self.TR,
+                freq_limit=self.sim.frequencyLimit,
                 freqs=self.freqs,
                 dt_old=self.dt_old,
                 dt_simulation=self.sim.time_integrator.dt,
