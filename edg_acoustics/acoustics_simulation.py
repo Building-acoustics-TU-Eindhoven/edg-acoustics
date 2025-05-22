@@ -11,7 +11,8 @@ import scipy
 import modepy
 from scipy.spatial.qhull import Delaunay
 import edg_acoustics
-import time;
+import time
+import json
 
 __all__ = ["AcousticsSimulation", "NODETOL"]
 
@@ -1057,7 +1058,7 @@ class AcousticsSimulation:
         RHS_Vz = -dPdz / self.rho0 + self.lift @ (self.Fscale * fluxVz)
 
         return RHS_P, RHS_Vx, RHS_Vy, RHS_Vz, BCvar
-
+    
     def time_integration(self, **kwargs):
         """Perform time integration for the acoustics simulation. Additional keyword arguments are optional and can vary:
 
@@ -1092,10 +1093,35 @@ class AcousticsSimulation:
         print(f"Total simulation time is {total_time}")
         print(f"Total number of simulation steps is {self.Ntimesteps}")
 
+        # Checking whether the 'should_cancel' flag has been set to True by the user
+        # Do not call this function all the time, as it is quite heavy
+        # This function should be called in the main calculation loop
+        def check_should_cancel(json_file_path_in):
+            try:
+                if json_file_path_in is not None:
+                    with open(json_file_path_in, 'r') as json_file_to_check:
+                        data = json.load(json_file_to_check)
+
+                # Update the specified field value
+                if 'should_cancel' in data:
+                    return data['should_cancel']
+
+            except Exception as e:
+                print("check_should_cancel returned: " + str(e))
+
+        result_container = {}
+        json_file_path = ""
+        if "json_file_path" in kwargs:
+            json_file_path = kwargs["json_file_path"]
+            with open(json_file_path, 'r') as json_file:
+                result_container = json.load(json_file)
+
+
         self.prec = numpy.zeros([self.rec.shape[1], self.Ntimesteps])
 
-        curTime = time.time()
-        prevEstimated = 0
+        cur_time = time.time()
+        prev_estimated = 0
+        prev_percent_done = 0
         # Step the solution
         for StepIndex in range(self.Ntimesteps):
 
@@ -1104,25 +1130,44 @@ class AcousticsSimulation:
             )  # by changing the value in place, the ID of the object is not changed (no new object is created), but the previous value is lost, which is not important here, because the previous value is not used anymore``
             self.prec[:, StepIndex] = numpy.diag(self.sampleWeight @ self.P[:, self.nodeindex])  # type: ignore
             if "delta_step" in kwargs and StepIndex % kwargs["delta_step"] == 0:
-                newTime = time.time()
-                elapsed = newTime - curTime
-                if prevEstimated == 0:
+                new_time = time.time()
+                elapsed = new_time - cur_time
+                if prev_estimated == 0:
                     estimated = (self.Ntimesteps - (StepIndex + 1)) * elapsed/10
                 else:
-                    estimated = 0.99 * prevEstimated + 0.01 * (self.Ntimesteps - (StepIndex + 1)) * elapsed/10
+                    estimated = 0.95 * prev_estimated + 0.05 * (self.Ntimesteps - (StepIndex + 1)) * elapsed/10
                     
                 minutes = math.floor(estimated/60)
                 seconds = math.floor(estimated - 60 * minutes)
                 print(f"Estimated time left: {minutes} minutes {seconds} seconds")
                 print(f"Percentage done: {round(100*(StepIndex + 1)/self.Ntimesteps)} %")
-                curTime = newTime;
-                prevEstimated = estimated;
+                cur_time = new_time
+                prev_estimated = estimated
                 print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
                 print(f"Current/Total time {self.time_integrator.dt * StepIndex}/{total_time}")
                 print(f"P at mic locations {self.prec[:,StepIndex]}")
 
             if "save_step" in kwargs and StepIndex % kwargs["save_step"] == 0:
                 self.save_results_on_the_run(format=kwargs.get("format", "mat"))
+            
+            percent_done = round(100 * (StepIndex + 1)/self.Ntimesteps)
+            
+            if result_container:
+                if percent_done > prev_percent_done:
+                    # Checking whether the user has cancelled the simulation (only one time per percentage increase)
+                    if check_should_cancel(json_file_path):
+                        print("breaking out of inner loop")
+                        break
+
+                    if result_container:
+                        result_container['results'][0]['percentage'] = percent_done
+                        with open(json_file_path, 'w') as percentage_update:
+                            percentage_update.write(
+                                json.dumps(result_container, indent=4)
+                            )
+
+                prev_percent_done = percent_done
+
         return self.prec
 
     def save_results_on_the_run(self, format: str = "mat"):
