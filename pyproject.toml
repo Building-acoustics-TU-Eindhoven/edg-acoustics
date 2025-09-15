@@ -33,11 +33,11 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-    "numpy",
+    "numpy<2.3.0",
     "meshio >=5.3.4",
     "modepy == 2021.1",
-    "scipy",
-    "gmsh",
+    "scipy<1.16.0",
+    "gmsh==4.13.1",
 ] #https://setuptools.pypa.io/en/latest/userguide/dependency_management.html
 keywords = [
     "DG",
