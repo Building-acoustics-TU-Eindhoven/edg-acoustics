@@ -1,6 +1,7 @@
 """This module provides postprocessing functionalities for the edg_acoustics package.
 """
 
+import os
 import numpy
 import scipy
 
@@ -271,77 +272,64 @@ class Monopole_postprocessor:
         return self.IRnew, self.TR
 
 
-    def write_results(self, filename, file_format):
+    def write_results(self, filename, file_format, append=False):
         """Writes the simulation results to a file.
 
         Args:
             filename (str): The name of the file to save the results.
             file_format (str): The format of the file to save the results. Can be either 'mat' or 'npy'.
         """
+        # Load existing data if file exists
+        if append and os.path.exists(f"{filename}.{file_format}"):
+            object = numpy.load(f"{filename}.{file_format}")
+            result_out = {k: object[k] for k in object.files}
+        else:
+            result_out = {}
+            
+        result_out = result_out | {
+            "IR": self.IRnew,
+            "TR": self.TR,
+            "freq_limit": self.sim.frequencyLimit,
+            #"freqs": self.freqs,
+            "dt_old": self.dt_old,
+            "dt_simulation": self.sim.time_integrator.dt,
+            "fs_old": self.fs_old,
+            "sampling_freq": self.sampling_freq,
+            "dt_new": self.dt_new,
+            "IR_Uncorrected": self.IRold,
+            "TR_original": self.TR_original,
+            "Ntimesteps": self.sim.Ntimesteps,
+            "total_time": self.sim.Ntimesteps * self.sim.time_integrator.dt,
+            #"TR_free": self.TR_free,
+            #"BC_labels": self.sim.BC_list,
+            "BC_para": self.sim.BC.BCpara,
+            "rho0": self.sim.rho0,
+            "c0": self.sim.c0,
+            "mesh_filename": self.sim.mesh.filename,
+            "source_xyz": self.sim.IC.source_xyz,
+            "source_halfwidth": self.sim.IC.halfwidth,
+            "Nx": self.sim.Nx,
+            "Nt": self.sim.time_integrator.Nt,
+            "CFL": self.sim.time_integrator.CFL,
+            "rec": self.sim.rec,
+            "total_time_s": self.sim.Ntimesteps * self.sim.time_integrator.dt,
+            "N_tets": self.sim.N_tets,
+        }
+        
         if file_format == "mat":
             scipy.io.savemat(
                 f"{filename}.mat",
-                {
-                    "IR": self.IRnew,
-                    "TR": self.TR,
-                    "freq_limit": self.sim.frequencyLimit,
-                    #"freqs": self.freqs,
-                    "dt_old": self.dt_old,
-                    "dt_simulation": self.sim.time_integrator.dt,
-                    "fs_old": self.fs_old,
-                    "sampling_freq": self.sampling_freq,
-                    "dt_new": self.dt_new,
-                    "IR_Uncorrected": self.IRold,
-                    "TR_original": self.TR_original,
-                    #"TR_free": self.TR_free,
-                    #"BC_labels": self.sim.BC_list,
-                    "BC_para": self.sim.BC.BCpara,
-                    "rho0": self.sim.rho0,
-                    "c0": self.sim.c0,
-                    "mesh_filename": self.sim.mesh.filename,
-                    "source_xyz": self.sim.IC.source_xyz,
-                    "halfwidth": self.sim.IC.halfwidth,
-                    "Nx": self.sim.Nx,
-                    "Nt": self.sim.time_integrator.Nt,
-                    "CFL": self.sim.time_integrator.CFL,
-                    "rec": self.sim.rec,
-                    "total_time_s": self.sim.Ntimesteps * self.sim.time_integrator.dt,
-                    "N_tets": self.sim.N_tets,
-                },
+                **result_out
             )
             print(f"Data saved in MATLAB .mat format to {filename}")
-        elif file_format == "npy":
+        elif file_format == "npz":
             numpy.savez(
-                f"{filename}",
-                IR=self.IRnew,
-                TR=self.TR,
-                freq_limit=self.sim.frequencyLimit,
-                freqs=self.freqs,
-                dt_old=self.dt_old,
-                dt_simulation=self.sim.time_integrator.dt,
-                fs_old=self.fs_old,
-                sampling_freq=self.sampling_freq,
-                dt_new=self.dt_new,
-                IR_Uncorrected=self.IRold,
-                TR_original=self.TR_original,
-                TR_free=self.TR_free,
-                BC_labels=self.sim.BC_list,
-                BC_para=self.sim.BC.BCpara,
-                rho0=self.sim.rho0,
-                c0=self.sim.c0,
-                mesh_filename=self.sim.mesh.filename,
-                source_xyz=self.sim.IC.source_xyz,
-                halfwidth=self.sim.IC.halfwidth,
-                Nx=self.sim.Nx,
-                Nt=self.sim.time_integrator.Nt,
-                CFL=self.sim.time_integrator.CFL,
-                rec=self.sim.rec,
-                total_time_s=self.sim.Ntimesteps * self.sim.time_integrator.dt,
-                N_tets=self.sim.N_tets,
+                filename,
+                **result_out
             )
             print(f"Data saved in NumPy .npy format to {filename}")
         else:
-            raise ValueError("Invalid format. Choose either 'mat' or 'npy'.")
+            raise ValueError("Invalid format. Choose either 'mat' or 'npz'.")
     
     def load_results(self, filename):
         return scipy.io.loadmat(filename)
