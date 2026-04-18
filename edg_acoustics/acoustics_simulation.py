@@ -11,6 +11,7 @@ import scipy
 import modepy
 from scipy.spatial.qhull import Delaunay
 import edg_acoustics
+from edg_acoustics.gpu_backend import xp, to_device, to_host, sync, is_gpu
 import time;
 
 __all__ = ["AcousticsSimulation", "NODETOL"]
@@ -928,6 +929,61 @@ class AcousticsSimulation:
         """load the time integrator to be used to and save it to the :class:`AcousticsSimulation` class."""
         self.time_integrator = time_integrator
 
+    def transfer_to_gpu(self):
+        """Transfer all simulation arrays to GPU for accelerated time stepping.
+
+        Call this after all init_* methods and before time_integration().
+        Falls back gracefully if CuPy is not available.
+        """
+        from edg_acoustics.gpu_backend import enable_gpu, to_device
+        if not enable_gpu():
+            return False
+
+        # Operator matrices
+        self.Dr = to_device(self.Dr)
+        self.Ds = to_device(self.Ds)
+        self.Dt = to_device(self.Dt)
+        self.lift = to_device(self.lift)
+        self.Fscale = to_device(self.Fscale)
+
+        # Geometric factors
+        for i in range(3):
+            for j in range(3):
+                self.rst_xyz[i, j] = to_device(self.rst_xyz[i, j])
+        for i in range(3):
+            self.n_xyz[i] = to_device(self.n_xyz[i])
+
+        # Maps
+        self.vmapM = to_device(self.vmapM)
+        self.vmapP = to_device(self.vmapP)
+
+        # State arrays
+        self.P = to_device(self.P)
+        self.Vx = to_device(self.Vx)
+        self.Vy = to_device(self.Vy)
+        self.Vz = to_device(self.Vz)
+
+        # Receiver weights (keep on CPU for recording)
+        # self.sampleWeight stays on CPU
+
+        # Flux object arrays
+        self.flux.nxdF = to_device(self.flux.nxdF)
+        self.flux.nydF = to_device(self.flux.nydF)
+        self.flux.nzdF = to_device(self.flux.nzdF)
+
+        # BC arrays
+        for index, bnode in enumerate(self.BCnode):
+            bnode["map"] = to_device(bnode["map"])
+            bnode["vmap"] = to_device(bnode["vmap"])
+        for index, bvar in enumerate(self.BC.BCvar):
+            for key in bvar:
+                if key != "label" and hasattr(bvar[key], 'shape'):
+                    bvar[key] = to_device(bvar[key])
+
+        print(f"GPU: transferred {self.Np}x{self.mesh.N_tets} = "
+              f"{self.Np * self.mesh.N_tets:,} DOFs to device")
+        return True
+
     def RHS_operator(
         self,
         P: numpy.ndarray,
@@ -953,11 +1009,12 @@ class AcousticsSimulation:
             BCvar (list[dict]): updated boundary condition variables.
         """
 
-        # Initialize jump variables
-        dVx = numpy.zeros_like(self.Fscale)
-        dVy = numpy.zeros_like(dVx)
-        dVz = numpy.zeros_like(dVx)
-        dP = numpy.zeros_like(dVx)
+        # Initialize jump variables (use xp for GPU compatibility)
+        from edg_acoustics.gpu_backend import xp
+        dVx = xp.zeros_like(self.Fscale)
+        dVy = xp.zeros_like(dVx)
+        dVz = xp.zeros_like(dVx)
+        dP = xp.zeros_like(dVx)
 
         # calculate jump values across the faces of neighboring elements
         dVx.reshape(-1)[:] = Vx.reshape(-1)[self.vmapM] - Vx.reshape(-1)[self.vmapP]
@@ -1095,30 +1152,33 @@ class AcousticsSimulation:
 
         curTime = time.time()
         prevEstimated = 0
+        print_interval = max(1, self.Ntimesteps // 20)  # print ~20 progress updates
+
         # Step the solution
         for StepIndex in range(self.Ntimesteps):
 
             self.time_integrator.step_dt(
                 self.P, self.Vx, self.Vy, self.Vz, self.BC
-            )  # by changing the value in place, the ID of the object is not changed (no new object is created), but the previous value is lost, which is not important here, because the previous value is not used anymore``
-            self.prec[:, StepIndex] = numpy.diag(self.sampleWeight @ self.P[:, self.nodeindex])  # type: ignore
-            if "delta_step" in kwargs and StepIndex % kwargs["delta_step"] == 0:
+            )
+
+            # Record at receivers (transfer from GPU if needed)
+            P_host = to_host(self.P) if is_gpu() else self.P
+            self.prec[:, StepIndex] = numpy.diag(self.sampleWeight @ P_host[:, self.nodeindex])  # type: ignore
+
+            if StepIndex % print_interval == 0 and StepIndex > 0:
                 newTime = time.time()
                 elapsed = newTime - curTime
                 if prevEstimated == 0:
-                    estimated = (self.Ntimesteps - (StepIndex + 1)) * elapsed/10
+                    estimated = (self.Ntimesteps - (StepIndex + 1)) * elapsed / print_interval
                 else:
-                    estimated = 0.99 * prevEstimated + 0.01 * (self.Ntimesteps - (StepIndex + 1)) * elapsed/10
-                    
-                minutes = math.floor(estimated/60)
+                    estimated = 0.95 * prevEstimated + 0.05 * (self.Ntimesteps - (StepIndex + 1)) * elapsed / print_interval
+                minutes = math.floor(estimated / 60)
                 seconds = math.floor(estimated - 60 * minutes)
-                print(f"Estimated time left: {minutes} minutes {seconds} seconds")
-                print(f"Percentage done: {round(100*(StepIndex + 1)/self.Ntimesteps)} %")
-                curTime = newTime;
-                prevEstimated = estimated;
-                print(f"Current/Total step {StepIndex+1}/{self.Ntimesteps}")
-                print(f"Current/Total time {self.time_integrator.dt * StepIndex}/{total_time}")
-                print(f"P at mic locations {self.prec[:,StepIndex]}")
+                pct = round(100 * (StepIndex + 1) / self.Ntimesteps)
+                print(f"  {pct:3d}% | step {StepIndex+1}/{self.Ntimesteps} | "
+                      f"~{minutes}m{seconds:02d}s left", flush=True)
+                curTime = newTime
+                prevEstimated = estimated
 
             if "save_step" in kwargs and StepIndex % kwargs["save_step"] == 0:
                 self.save_results_on_the_run(format=kwargs.get("format", "mat"))

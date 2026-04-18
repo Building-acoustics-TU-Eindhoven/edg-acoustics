@@ -8,6 +8,7 @@ from .initial_condition import InitialCondition, Monopole_IC
 from .preprocessing import Flux, UpwindFlux
 from .time_integration import TimeIntegrator, TSI_TI
 from .postprocessing import Monopole_postprocessor
+from .gpu_backend import enable_gpu, disable_gpu, HAS_GPU
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 

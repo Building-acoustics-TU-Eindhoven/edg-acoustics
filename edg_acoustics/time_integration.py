@@ -11,6 +11,7 @@ import abc
 import math
 import numpy
 import edg_acoustics
+from edg_acoustics.gpu_backend import xp
 
 __all__ = ["TimeIntegrator", "TSI_TI", "CFL_Default"]
 
