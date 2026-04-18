@@ -946,12 +946,17 @@ class AcousticsSimulation:
         self.lift = to_device(self.lift)
         self.Fscale = to_device(self.Fscale)
 
-        # Geometric factors
+        # Geometric factors (object arrays — build new lists)
+        rst_xyz_gpu = numpy.empty((3, 3), dtype=object)
         for i in range(3):
             for j in range(3):
-                self.rst_xyz[i, j] = to_device(self.rst_xyz[i, j])
+                rst_xyz_gpu[i, j] = to_device(self.rst_xyz[i, j])
+        self.rst_xyz = rst_xyz_gpu
+
+        n_xyz_gpu = [None, None, None]
         for i in range(3):
-            self.n_xyz[i] = to_device(self.n_xyz[i])
+            n_xyz_gpu[i] = to_device(self.n_xyz[i])
+        self.n_xyz = n_xyz_gpu
 
         # Maps
         self.vmapM = to_device(self.vmapM)
@@ -966,10 +971,12 @@ class AcousticsSimulation:
         # Receiver weights (keep on CPU for recording)
         # self.sampleWeight stays on CPU
 
-        # Flux object arrays
-        self.flux.nxdF = to_device(self.flux.nxdF)
-        self.flux.nydF = to_device(self.flux.nydF)
-        self.flux.nzdF = to_device(self.flux.nzdF)
+        # Flux object — transfer all numpy array attributes
+        for attr in ['cn1s', 'cn2s', 'cn3s', 'cn1n2', 'cn1n3', 'cn2n3',
+                     'n1rho', 'n2rho', 'n3rho', 'csn1rho', 'csn2rho', 'csn3rho']:
+            if hasattr(self.flux, attr):
+                setattr(self.flux, attr, to_device(getattr(self.flux, attr)))
+        self.flux.n_xyz = self.n_xyz  # already transferred above
 
         # BC arrays
         for index, bnode in enumerate(self.BCnode):
@@ -979,6 +986,17 @@ class AcousticsSimulation:
             for key in bvar:
                 if key != "label" and hasattr(bvar[key], 'shape'):
                     bvar[key] = to_device(bvar[key])
+
+        # BC parameters (scalars, lists, arrays in BCpara)
+        for index, paras in enumerate(self.BC.BCpara):
+            for key in list(paras.keys()):
+                if key == "label":
+                    continue
+                val = paras[key]
+                if isinstance(val, (list, numpy.ndarray)):
+                    paras[key] = to_device(numpy.asarray(val, dtype=numpy.float64))
+                elif isinstance(val, (int, float)):
+                    paras[key] = to_device(numpy.array([val], dtype=numpy.float64))
 
         print(f"GPU: transferred {self.Np}x{self.mesh.N_tets} = "
               f"{self.Np * self.mesh.N_tets:,} DOFs to device")
